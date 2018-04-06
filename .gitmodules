@@ -1,0 +1,9 @@
+[submodule "json"]
+	path = lib/json
+	url = https://github.com/nlohmann/json.git
+[submodule "googletest"]
+	path = lib/googletest
+	url = https://github.com/google/googletest.git
+[submodule "sdd"]
+	path = lib/libsdd
+	url = git@github.com:hahaXD/sdd.git 
