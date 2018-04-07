@@ -28,6 +28,28 @@ std::vector<Vtree *> SerializeVtree(Vtree *root) {
   }
   return serialized_vtree;
 }
+Vtree *CopyVtree(Vtree *root) {
+  std::vector<Vtree*> orig_vtrees = SerializeVtree(root);
+  auto orig_vtree_size = orig_vtrees.size();
+  for (int64_t i = (int64_t)orig_vtree_size-1; i >=0; ++i){
+    Vtree* orig_vtree = orig_vtrees[i];
+    Vtree* new_node = nullptr;
+    if (sdd_vtree_is_leaf(orig_vtree)){
+      new_node = new_leaf_vtree(sdd_vtree_var(orig_vtree));
+    }else{
+      Vtree* orig_left = sdd_vtree_left(orig_vtree);
+      Vtree* orig_right = sdd_vtree_right(orig_vtree);
+      new_node = new_internal_vtree((Vtree*)sdd_vtree_data(orig_left), (Vtree*)sdd_vtree_data(orig_right));
+      sdd_vtree_set_data(nullptr, orig_left);
+      sdd_vtree_set_data(nullptr, orig_right);
+    }
+    sdd_vtree_set_data((void*)new_node, orig_vtree);
+  }
+  Vtree* new_vtree = (Vtree*) sdd_vtree_data(root);
+  sdd_vtree_set_data(nullptr, root);
+  set_vtree_properties(new_vtree);
+  return new_vtree;
+}
 }
 namespace psdd_node_util {
 

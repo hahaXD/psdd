@@ -162,6 +162,7 @@ class PsddTopNode : public PsddNode {
 
 namespace vtree_util{
 std::vector<Vtree*> SerializeVtree(Vtree* root);
+Vtree* CopyVtree(Vtree* root);
 }
 
 namespace psdd_node_util {
