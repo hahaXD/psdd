@@ -12,7 +12,8 @@ extern "C" {
 
 class PsddManager {
  public:
-  static PsddManager *GetPsddManager(Vtree *sdd_vtree, const std::unordered_map<uint32_t, uint32_t> &variable_mapping);
+  static PsddManager *GetPsddManagerFromSddVtree(Vtree *sdd_vtree, const std::unordered_map<uint32_t, uint32_t> &variable_mapping);
+  static PsddManager *GetPsddManagerFromVtree(Vtree* psdd_vtree);
   ~PsddManager();
   void DeleteUnusedPsddNodes(const std::vector<PsddNode *> &used_nodes);
   PsddNode *ConvertSddToPsdd(SddNode *root_node,

@@ -21,8 +21,8 @@ void TagSddVtreeWithPsddVtree(const std::vector<Vtree *> &sdd_vtree_serialized,
 
 }
 
-PsddManager *PsddManager::GetPsddManager(Vtree *sdd_vtree,
-                                         const std::unordered_map<uint32_t, uint32_t> &variable_mapping) {
+PsddManager *PsddManager::GetPsddManagerFromSddVtree(Vtree *sdd_vtree,
+                                                     const std::unordered_map<uint32_t, uint32_t> &variable_mapping) {
   std::vector<Vtree *> serialized_sdd_vtree = vtree_util::SerializeVtree(sdd_vtree);
   for (auto vtree_it = serialized_sdd_vtree.rbegin(); vtree_it != serialized_sdd_vtree.rend(); ++vtree_it) {
     Vtree *sdd_vtree_node = *vtree_it;
@@ -224,4 +224,9 @@ PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node,
 }
 Vtree *PsddManager::vtree() const {
   return vtree_;
+}
+PsddManager *PsddManager::GetPsddManagerFromVtree(Vtree *psdd_vtree) {
+  Vtree *copy_vtree = vtree_util::CopyVtree(psdd_vtree);
+  auto *unique_table = PsddUniqueTable::GetPsddUniqueTable();
+  return new PsddManager(copy_vtree, unique_table);
 }

@@ -68,7 +68,7 @@ TEST(SDD_TO_PSDD_TEST, MODEL_COUNT_TEST){
   for (auto i = 0 ; i < 10; ++i){
     variable_mapping[(uint32_t)i+1] = (uint32_t)i+1;
   }
-  PsddManager* psdd_manager = PsddManager::GetPsddManager(sdd_manager_vtree(sdd_manager), variable_mapping);
+  PsddManager* psdd_manager = PsddManager::GetPsddManagerFromSddVtree(sdd_manager_vtree(sdd_manager), variable_mapping);
   PsddNode* result_psdd = psdd_manager->ConvertSddToPsdd(cardinality_node, sdd_manager_vtree(sdd_manager), 0, variable_mapping);
   std::vector<PsddNode*> serialized_nodes = psdd_node_util::SerializePsddNodes(result_psdd);
   EXPECT_EQ(sdd_global_model_count(cardinality_node, sdd_manager), psdd_node_util::ModelCount(serialized_nodes));
@@ -87,7 +87,7 @@ TEST(SDD_TO_PSDD_TEST, VARIABLE_MAP_TEST){
   for (auto i = 0 ; i < 10; ++i){
     variable_mapping[(uint32_t)i+1] = (uint32_t)i+11;
   }
-  PsddManager* psdd_manager = PsddManager::GetPsddManager(sdd_manager_vtree(sdd_manager), variable_mapping);
+  PsddManager* psdd_manager = PsddManager::GetPsddManagerFromSddVtree(sdd_manager_vtree(sdd_manager), variable_mapping);
   PsddNode* result_psdd = psdd_manager->ConvertSddToPsdd(first_true, sdd_manager_vtree(sdd_manager), 0, variable_mapping);
   auto serialized_psdd = psdd_node_util::SerializePsddNodes(result_psdd);
   {
