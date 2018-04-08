@@ -70,7 +70,6 @@ PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node,
   }
   std::vector<Vtree *> serialized_psdd_vtrees = vtree_util::SerializeVtree(vtree_);
   std::vector<Vtree *> serialized_sdd_vtrees = vtree_util::SerializeVtree(sdd_vtree);
-  PsddNode *result_node = nullptr;
   TagSddVtreeWithPsddVtree(serialized_sdd_vtrees, serialized_psdd_vtrees, variable_mapping);
   std::unordered_map<SddLiteral, PsddNode *> true_nodes_map;
   SddSize node_size = 0;
@@ -168,8 +167,8 @@ PsddNode *PsddManager::GetTrueNode(Vtree *target_vtree_node,
                                                   cur_vtree_node,
                                                   flag_index,
                                                   static_cast<uint32_t>(sdd_vtree_var(cur_vtree_node)),
-                                                  PsddParameter::CreateFromDecimal(0),
-                                                  PsddParameter::CreateFromDecimal(0));
+                                                  PsddParameter::CreateFromDecimal(0.5),
+                                                  PsddParameter::CreateFromDecimal(0.5));
         new_true_node = unique_table_->GetUniqueNode(new_true_node, &node_index_);
         true_node_map->insert(std::make_pair(sdd_vtree_position(cur_vtree_node), new_true_node));
       } else {
@@ -207,7 +206,7 @@ PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node,
       auto true_node =
           GetTrueNode(sdd_vtree_right(cur_vtree_parent_node), flag_index, true_node_map);
       PsddNode *next_node =
-          new PsddDecisionNode(node_index_, cur_vtree_parent_node, flag_index, {cur_node}, {true_node}, {});
+          new PsddDecisionNode(node_index_, cur_vtree_parent_node, flag_index, {cur_node}, {true_node}, {PsddParameter::CreateFromDecimal(1)});
       next_node = unique_table_->GetUniqueNode(next_node, &node_index_);
       cur_node = next_node;
     } else {
@@ -215,7 +214,7 @@ PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node,
       auto true_node =
           GetTrueNode(sdd_vtree_left(cur_vtree_parent_node), flag_index, true_node_map);
       PsddNode *next_node =
-          new PsddDecisionNode(node_index_, cur_vtree_parent_node, flag_index, {true_node}, {cur_node}, {});
+          new PsddDecisionNode(node_index_, cur_vtree_parent_node, flag_index, {true_node}, {cur_node}, {PsddParameter::CreateFromDecimal(1)});
       next_node = unique_table_->GetUniqueNode(next_node, &node_index_);
       cur_node = next_node;
     }
@@ -230,3 +229,53 @@ PsddManager *PsddManager::GetPsddManagerFromVtree(Vtree *psdd_vtree) {
   auto *unique_table = PsddUniqueTable::GetPsddUniqueTable();
   return new PsddManager(copy_vtree, unique_table);
 }
+PsddTopNode *PsddManager::GetPsddTopNode(Vtree *target_vtree_node,
+                                         uintmax_t flag_index,
+                                         const PsddParameter &positive_parameter,
+                                         const PsddParameter &negative_parameter) {
+  assert(sdd_vtree_is_leaf(target_vtree_node));
+  auto next_node = new PsddTopNode(node_index_,
+                                           target_vtree_node,
+                                           flag_index,
+                                           (uint32_t) sdd_vtree_var(target_vtree_node),
+                                           positive_parameter,
+                                           negative_parameter);
+  next_node = (PsddTopNode *) unique_table_->GetUniqueNode(next_node, &node_index_);
+  return next_node;
+}
+PsddLiteralNode *PsddManager::GetPsddLiteralNode(Vtree *target_vtree_node, uintmax_t flag_index, bool sign) {
+  assert(sdd_vtree_is_leaf(target_vtree_node));
+  SddLiteral lit = 0;
+  if (sign) {
+    lit = sdd_vtree_var(target_vtree_node);
+  } else {
+    lit = -sdd_vtree_var(target_vtree_node);
+  }
+  auto next_node = new PsddLiteralNode(node_index_, target_vtree_node, flag_index, (int32_t) lit);
+  next_node = (PsddLiteralNode *) unique_table_->GetUniqueNode(next_node, &node_index_);
+  return next_node;
+}
+PsddDecisionNode *PsddManager::GetConformedPsddDecisionNode(const std::vector<PsddNode *> &primes,
+                                                            const std::vector<PsddNode *> &subs,
+                                                            const std::vector<PsddParameter> &params,
+                                                            uintmax_t flag_index) {
+  std::unordered_map<SddLiteral, PsddNode*> true_node_map;
+  Vtree* lca = sdd_vtree_lca(primes[0]->vtree_node(), subs[0]->vtree_node(), vtree_);
+  Vtree* left_child = sdd_vtree_left(lca);
+  Vtree* right_child = sdd_vtree_right(lca);
+  auto element_size = primes.size();
+  std::vector<PsddNode*> conformed_primes;
+  std::vector<PsddNode*> conformed_subs;
+  for (auto i = 0; i < element_size; ++i){
+    PsddNode* cur_prime = primes[i];
+    PsddNode* cur_sub = subs[i];
+    PsddNode* cur_conformed_prime = NormalizePsddNode(left_child, cur_prime, flag_index, &true_node_map);
+    PsddNode* cur_conformed_sub = NormalizePsddNode(right_child, cur_sub, flag_index, &true_node_map);
+    conformed_primes.push_back(cur_conformed_prime);
+    conformed_subs.push_back(cur_conformed_sub);
+  }
+  auto next_decn_node = new PsddDecisionNode(node_index_, lca, flag_index, conformed_primes, conformed_subs, params);
+  next_decn_node = (PsddDecisionNode*)unique_table_->GetUniqueNode(next_decn_node, &node_index_);
+  return next_decn_node;
+}
+
