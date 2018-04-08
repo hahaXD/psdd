@@ -50,6 +50,16 @@ Vtree *CopyVtree(Vtree *root) {
   set_vtree_properties(new_vtree);
   return new_vtree;
 }
+std::vector<SddLiteral> VariablesUnderVtree(Vtree *root) {
+  std::vector<SddLiteral> variables;
+  std::vector<Vtree*> vtree_serialized = SerializeVtree(root);
+  for (Vtree* cur_vtree : vtree_serialized){
+    if (sdd_vtree_is_leaf(cur_vtree)){
+      variables.push_back(sdd_vtree_var(cur_vtree));
+    }
+  }
+  return variables;
+}
 }
 namespace psdd_node_util {
 
