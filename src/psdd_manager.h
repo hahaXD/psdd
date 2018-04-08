@@ -21,6 +21,9 @@ class PsddManager {
                              uintmax_t flag_index,
                              const std::unordered_map<uint32_t, uint32_t> &variable_mapping);
   PsddNode *GetTrueNode(Vtree *target_vtree_node, uintmax_t flag_index);
+  PsddTopNode* GetPsddTopNode(Vtree* target_vtree_node, uintmax_t flag_index, const PsddParameter& positive_parameter, const PsddParameter& negative_parameter);
+  PsddDecisionNode* GetConformedPsddDecisionNode(const std::vector<PsddNode*>& primes, const std::vector<PsddNode*>& subs, const std::vector<PsddParameter>& params, uintmax_t flag_index);
+  PsddLiteralNode* GetPsddLiteralNode(Vtree* target_vtree_node, uintmax_t flag_index, bool sign);
   Vtree* vtree() const;
  private:
   PsddManager(Vtree *vtree, PsddUniqueTable *unique_table);

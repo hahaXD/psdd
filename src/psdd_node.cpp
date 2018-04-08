@@ -31,7 +31,7 @@ std::vector<Vtree *> SerializeVtree(Vtree *root) {
 Vtree *CopyVtree(Vtree *root) {
   std::vector<Vtree*> orig_vtrees = SerializeVtree(root);
   auto orig_vtree_size = orig_vtrees.size();
-  for (int64_t i = (int64_t)orig_vtree_size-1; i >=0; ++i){
+  for (int64_t i = (int64_t)orig_vtree_size-1; i >=0; --i){
     Vtree* orig_vtree = orig_vtrees[i];
     Vtree* new_node = nullptr;
     if (sdd_vtree_is_leaf(orig_vtree)){
@@ -45,7 +45,7 @@ Vtree *CopyVtree(Vtree *root) {
     }
     sdd_vtree_set_data((void*)new_node, orig_vtree);
   }
-  Vtree* new_vtree = (Vtree*) sdd_vtree_data(root);
+  auto new_vtree = (Vtree*) sdd_vtree_data(root);
   sdd_vtree_set_data(nullptr, root);
   set_vtree_properties(new_vtree);
   return new_vtree;
