@@ -50,7 +50,16 @@ PsddManager *PsddManager::GetPsddManagerFromSddVtree(Vtree *sdd_vtree,
   return new PsddManager(psdd_vtree, unique_table);
 }
 PsddManager::PsddManager(Vtree *vtree, PsddUniqueTable *unique_table)
-    : vtree_(vtree), unique_table_(unique_table), node_index_(0) {}
+    : vtree_(vtree), unique_table_(unique_table), node_index_(0), leaf_vtree_map_(){
+  std::vector<Vtree*> serialized_vtrees = vtree_util::SerializeVtree(vtree_);
+  SddLiteral variable_size = (serialized_vtrees.size() + 1) / 2;
+  leaf_vtree_map_.resize(variable_size + 1, nullptr);
+  for (Vtree* cur_v : serialized_vtrees){
+    if (sdd_vtree_is_leaf(cur_v)){
+      leaf_vtree_map_[sdd_vtree_var(cur_v)] = cur_v;
+    }
+  }
+}
 PsddManager::~PsddManager() {
   unique_table_->DeleteUnusedPsddNodes({});
   delete (unique_table_);
@@ -229,10 +238,11 @@ PsddManager *PsddManager::GetPsddManagerFromVtree(Vtree *psdd_vtree) {
   auto *unique_table = PsddUniqueTable::GetPsddUniqueTable();
   return new PsddManager(copy_vtree, unique_table);
 }
-PsddTopNode *PsddManager::GetPsddTopNode(Vtree *target_vtree_node,
+PsddTopNode *PsddManager::GetPsddTopNode(uint32_t variable_index,
                                          uintmax_t flag_index,
                                          const PsddParameter &positive_parameter,
                                          const PsddParameter &negative_parameter) {
+  Vtree* target_vtree_node = leaf_vtree_map_[variable_index];
   assert(sdd_vtree_is_leaf(target_vtree_node));
   auto next_node = new PsddTopNode(node_index_,
                                            target_vtree_node,
@@ -243,15 +253,10 @@ PsddTopNode *PsddManager::GetPsddTopNode(Vtree *target_vtree_node,
   next_node = (PsddTopNode *) unique_table_->GetUniqueNode(next_node, &node_index_);
   return next_node;
 }
-PsddLiteralNode *PsddManager::GetPsddLiteralNode(Vtree *target_vtree_node, uintmax_t flag_index, bool sign) {
+PsddLiteralNode *PsddManager::GetPsddLiteralNode(int32_t literal, uintmax_t flag_index) {
+  Vtree* target_vtree_node = leaf_vtree_map_[abs(literal)];
   assert(sdd_vtree_is_leaf(target_vtree_node));
-  SddLiteral lit = 0;
-  if (sign) {
-    lit = sdd_vtree_var(target_vtree_node);
-  } else {
-    lit = -sdd_vtree_var(target_vtree_node);
-  }
-  auto next_node = new PsddLiteralNode(node_index_, target_vtree_node, flag_index, (int32_t) lit);
+  auto next_node = new PsddLiteralNode(node_index_, target_vtree_node, flag_index, literal);
   next_node = (PsddLiteralNode *) unique_table_->GetUniqueNode(next_node, &node_index_);
   return next_node;
 }

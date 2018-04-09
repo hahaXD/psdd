@@ -119,32 +119,25 @@ TEST(PSDD_MANAGER_TEST, GET_TOP_NODE) {
   sdd_vtree_free(vtree);
   vtree = psdd_manager->vtree();
   auto vtree_nodes = vtree_util::SerializeVtree(vtree);
-  Vtree *target = nullptr;
-  for (Vtree *v: vtree_nodes) {
-    if (sdd_vtree_is_leaf(v) && sdd_vtree_var(v) == 1) {
-      target = v;
-      break;
-    }
-  }
-  PsddTopNode *new_top_node = psdd_manager->GetPsddTopNode(target,
+  PsddTopNode *new_top_node = psdd_manager->GetPsddTopNode(1,
                                                            0,
                                                            PsddParameter::CreateFromDecimal(0.1),
                                                            PsddParameter::CreateFromDecimal(0.9));
   EXPECT_EQ(new_top_node->true_parameter(), PsddParameter::CreateFromDecimal(0.1));
   EXPECT_EQ(new_top_node->false_parameter(), PsddParameter::CreateFromDecimal(0.9));
-  PsddTopNode *second_new_top_node = psdd_manager->GetPsddTopNode(target,
+  PsddTopNode *second_new_top_node = psdd_manager->GetPsddTopNode(1,
                                                                   0,
                                                                   PsddParameter::CreateFromDecimal(0.1),
                                                                   PsddParameter::CreateFromDecimal(0.9));
   EXPECT_EQ(second_new_top_node, new_top_node);
-  second_new_top_node = psdd_manager->GetPsddTopNode(target,
+  second_new_top_node = psdd_manager->GetPsddTopNode(1,
                                                      0,
                                                      PsddParameter::CreateFromDecimal(0.9),
                                                      PsddParameter::CreateFromDecimal(0.1));
   EXPECT_NE(second_new_top_node, new_top_node);
   EXPECT_EQ(second_new_top_node->true_parameter(), PsddParameter::CreateFromDecimal(0.9));
   EXPECT_EQ(second_new_top_node->false_parameter(), PsddParameter::CreateFromDecimal(0.1));
-  second_new_top_node = psdd_manager->GetPsddTopNode(target,
+  second_new_top_node = psdd_manager->GetPsddTopNode(1,
                                                      1,
                                                      PsddParameter::CreateFromDecimal(0.1),
                                                      PsddParameter::CreateFromDecimal(0.9));
@@ -158,22 +151,15 @@ TEST(PSDD_MANAGER_TEST, GET_LIERAL_NODE) {
   sdd_vtree_free(vtree);
   vtree = psdd_manager->vtree();
   auto vtree_nodes = vtree_util::SerializeVtree(vtree);
-  Vtree *target = nullptr;
-  for (Vtree *v: vtree_nodes) {
-    if (sdd_vtree_is_leaf(v) && sdd_vtree_var(v) == 1) {
-      target = v;
-      break;
-    }
-  }
-  PsddLiteralNode *new_literal_node = psdd_manager->GetPsddLiteralNode(target, 0, false);
+  PsddLiteralNode *new_literal_node = psdd_manager->GetPsddLiteralNode(-1, 0);
   EXPECT_EQ(false, new_literal_node->sign());
   EXPECT_EQ(-1, new_literal_node->literal());
-  PsddLiteralNode *second_new_literal_node = psdd_manager->GetPsddLiteralNode(target, 0, false);
+  PsddLiteralNode *second_new_literal_node = psdd_manager->GetPsddLiteralNode(-1, 0);
   EXPECT_EQ(new_literal_node, second_new_literal_node);
-  second_new_literal_node = psdd_manager->GetPsddLiteralNode(target, 0, true);
+  second_new_literal_node = psdd_manager->GetPsddLiteralNode(1, 0);
   EXPECT_NE(new_literal_node, second_new_literal_node);
   EXPECT_EQ(1, second_new_literal_node->literal());
-  second_new_literal_node = psdd_manager->GetPsddLiteralNode(target, 1, false);
+  second_new_literal_node = psdd_manager->GetPsddLiteralNode(-1, 1);
   EXPECT_EQ(-1, second_new_literal_node->literal());
   EXPECT_NE(second_new_literal_node, new_literal_node);
   delete (psdd_manager);
@@ -185,28 +171,13 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   sdd_vtree_free(vtree);
   vtree = psdd_manager->vtree();
   auto vtree_nodes = vtree_util::SerializeVtree(vtree);
-  Vtree *vtree_one = nullptr;
-  Vtree *vtree_ten = nullptr;
-  for (Vtree *v: vtree_nodes) {
-    if (sdd_vtree_is_leaf(v)) {
-      if (sdd_vtree_var(v) == 1) {
-        vtree_one = v;
-      }
-      if (sdd_vtree_var(v) == 10) {
-        vtree_ten = v;
-      }
-      if (vtree_ten && vtree_one) {
-        break;
-      }
-    }
-  }
-  PsddLiteralNode *neg_one = psdd_manager->GetPsddLiteralNode(vtree_one, 0, false);
-  PsddTopNode *top_ten = psdd_manager->GetPsddTopNode(vtree_ten,
+  PsddLiteralNode *neg_one = psdd_manager->GetPsddLiteralNode(-1, 0);
+  PsddTopNode *top_ten = psdd_manager->GetPsddTopNode(10,
                                                       0,
                                                       PsddParameter::CreateFromDecimal(0.9),
                                                       PsddParameter::CreateFromDecimal(0.1));
-  PsddLiteralNode *pos_one = psdd_manager->GetPsddLiteralNode(vtree_one, 0, true);
-  PsddTopNode *top_ten_second = psdd_manager->GetPsddTopNode(vtree_ten,
+  PsddLiteralNode *pos_one = psdd_manager->GetPsddLiteralNode(1, 0);
+  PsddTopNode *top_ten_second = psdd_manager->GetPsddTopNode(10,
                                                              0,
                                                              PsddParameter::CreateFromDecimal(0.1),
                                                              PsddParameter::CreateFromDecimal(0.9));
