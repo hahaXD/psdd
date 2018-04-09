@@ -60,6 +60,45 @@ std::vector<SddLiteral> VariablesUnderVtree(Vtree *root) {
   }
   return variables;
 }
+Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables) {
+  std::unordered_set<SddLiteral> variable_set;
+  for (SddLiteral variable_index : variables){
+    variable_set.insert(variable_index);
+  }
+  std::vector<Vtree*> serialized_vtrees = SerializeVtree(orig_vtree);
+  for (auto vit = serialized_vtrees.rbegin(); vit != serialized_vtrees.rend(); ++vit){
+    Vtree* cur_vtree_node = *vit;
+    if (sdd_vtree_is_leaf(cur_vtree_node)){
+      SddLiteral cur_variable_index = sdd_vtree_var(cur_vtree_node);
+      if (variable_set.find(cur_variable_index) != variable_set.end()){
+        Vtree* new_vtree_node = new_leaf_vtree(cur_variable_index);
+        sdd_vtree_set_data((void*)new_vtree_node, cur_vtree_node);
+      }else{
+        sdd_vtree_set_data(nullptr, cur_vtree_node);
+      }
+    }else{
+      Vtree* left_child = sdd_vtree_left(cur_vtree_node);
+      Vtree* right_child = sdd_vtree_right(cur_vtree_node);
+      auto new_left_child = (Vtree*) sdd_vtree_data(left_child);
+      sdd_vtree_set_data(nullptr, left_child);
+      auto new_right_child = (Vtree*) sdd_vtree_data(right_child);
+      sdd_vtree_set_data(nullptr, right_child);
+      if (new_left_child && new_right_child){
+        Vtree* new_vtree_node = new_internal_vtree(new_left_child, new_right_child);
+        sdd_vtree_set_data((void*)new_vtree_node, cur_vtree_node);
+      }else if (new_left_child || new_right_child){
+        Vtree* new_vtree_node = new_left_child != nullptr ? new_left_child : new_right_child;
+        sdd_vtree_set_data((void*) new_vtree_node, cur_vtree_node);
+      }else{
+        sdd_vtree_set_data(nullptr, cur_vtree_node);
+      }
+    }
+  }
+  auto new_vtree_root = (Vtree*)sdd_vtree_data(orig_vtree);
+  sdd_vtree_set_data(nullptr, orig_vtree);
+  set_vtree_properties(new_vtree_root);
+  return new_vtree_root;
+}
 }
 namespace psdd_node_util {
 

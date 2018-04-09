@@ -164,6 +164,7 @@ namespace vtree_util{
 std::vector<Vtree*> SerializeVtree(Vtree* root);
 Vtree* CopyVtree(Vtree* root);
 std::vector<SddLiteral> VariablesUnderVtree(Vtree* root);
+Vtree* ProjectVtree(Vtree* orig_vtree, const std::vector<SddLiteral>& variables);
 }
 
 namespace psdd_node_util {
