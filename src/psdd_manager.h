@@ -24,6 +24,8 @@ class PsddManager {
   PsddTopNode* GetPsddTopNode(uint32_t variable_index , uintmax_t flag_index, const PsddParameter& positive_parameter, const PsddParameter& negative_parameter);
   PsddDecisionNode* GetConformedPsddDecisionNode(const std::vector<PsddNode*>& primes, const std::vector<PsddNode*>& subs, const std::vector<PsddParameter>& params, uintmax_t flag_index);
   PsddLiteralNode* GetPsddLiteralNode(int32_t literal, uintmax_t flag_index);
+  // input psdd may or may not from the same manager, but it has to conform a consistent vtree.
+  PsddNode* LoadPsddNode(Vtree* target_vtree, PsddNode* root_psdd_node, uintmax_t flag_index);
   Vtree* vtree() const;
  private:
   PsddManager(Vtree *vtree, PsddUniqueTable *unique_table);
