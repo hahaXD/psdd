@@ -334,4 +334,8 @@ PsddNode *PsddManager::LoadPsddNode(Vtree *target_vtree, PsddNode *root_psdd_nod
   }
   return result_node;
 }
+PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node, PsddNode *target_psdd_node, uintmax_t flag_index) {
+  std::unordered_map<SddLiteral, PsddNode*> true_node_map;
+  return NormalizePsddNode(target_vtree_node, target_psdd_node, flag_index, &true_node_map);
+}
 

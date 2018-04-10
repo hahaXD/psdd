@@ -220,3 +220,7 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   EXPECT_NE(new_decn_node, new_second_node);
   delete (psdd_manager);
 }
+
+TEST(PSDD_MANAGER_TEST, LOAD_PSDD_TEST){
+
+}
