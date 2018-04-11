@@ -205,7 +205,8 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   Probability pr2 = psdd_node_util::Evaluate(variables, instantiation_two, new_decn_node);
   EXPECT_EQ(pr, pr2);
   EXPECT_EQ(new_decn_node, new_second_node);
-  EXPECT_EQ(pr, PsddParameter::CreateFromDecimal(0.0028125));
+  EXPECT_EQ(pr, PsddParameter::CreateFromDecimal(0.72));
+  EXPECT_EQ(psdd_node_util::ModelCount(psdd_node_util::SerializePsddNodes(new_decn_node)), 1<<10);
   new_second_node = psdd_manager->GetConformedPsddDecisionNode({neg_one, pos_one},
                                                                {top_ten, top_ten_second},
                                                                {PsddParameter::CreateFromDecimal(0.2),
@@ -239,7 +240,7 @@ TEST(PSDD_MANAGER_TEST, LOAD_PSDD_TEST) {
   EXPECT_EQ(second_card_psdd, card_psdd);
   second_card_psdd = test_psdd_manager->LoadPsddNode(test_psdd_manager->vtree(), card_psdd, 1);
   EXPECT_NE(second_card_psdd, card_psdd);
-  size_t bound = 1 << 8;
+  size_t bound = 1 << 9;
   std::bitset<MAX_VAR> variable_mask = bound - 1;
   std::vector<PsddNode *> serialized_card_psdd = psdd_node_util::SerializePsddNodes(card_psdd);
   std::vector<PsddNode *> serialized_second_card_psdd = psdd_node_util::SerializePsddNodes(second_card_psdd);
@@ -283,8 +284,14 @@ TEST(PSDD_MANAGER_TEST, MULTIPLY_TEST){
   sdd_vtree_free(vtree);
   PsddNode* uniform_true_node = manager->GetTrueNode(manager->vtree(), 0);
   auto result = manager->Multiply(uniform_true_node, uniform_true_node, 0);
-  EXPECT_EQ(result.first, uniform_true_node);
-  EXPECT_EQ(result.second, PsddParameter::CreateFromDecimal(pow(2,-16)));
+  size_t cap = 1 << 17;
+  std::bitset<MAX_VAR> variables = cap -1;
+  std::vector<PsddNode*> serialized_psdd_nodes = psdd_node_util::SerializePsddNodes(result.first);
+  for (auto i = 0; i < cap; ++i){
+    std::bitset<MAX_VAR> cur_instantiation = i;
+    EXPECT_EQ(psdd_node_util::Evaluate(variables, cur_instantiation, serialized_psdd_nodes), PsddParameter::CreateFromDecimal(pow(2,-16)));
+  }
+  EXPECT_EQ(result.second, PsddParameter::CreateFromDecimal(pow(2,16)));
   PsddNode* one_true = manager->NormalizePsddNode(manager->vtree(), manager->GetPsddLiteralNode(1, 0), 0);
   PsddNode* one_false = manager->NormalizePsddNode(manager->vtree(), manager->GetPsddLiteralNode(-1,0), 0);
   result = manager->Multiply(one_true, one_false, 0);

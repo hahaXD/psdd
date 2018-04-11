@@ -338,8 +338,8 @@ PsddNode *PsddManager::GetTrueNode(Vtree *target_vtree_node,
                                                   cur_vtree_node,
                                                   flag_index,
                                                   static_cast<uint32_t>(sdd_vtree_var(cur_vtree_node)),
-                                                  PsddParameter::CreateFromDecimal(0.5),
-                                                  PsddParameter::CreateFromDecimal(0.5));
+                                                  PsddParameter::CreateFromDecimal(1),
+                                                  PsddParameter::CreateFromDecimal(1));
         new_true_node = unique_table_->GetUniqueNode(new_true_node, &node_index_);
         true_node_map->insert(std::make_pair(sdd_vtree_position(cur_vtree_node), new_true_node));
       } else {
