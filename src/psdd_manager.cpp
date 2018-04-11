@@ -5,6 +5,7 @@
 #include <queue>
 #include <stack>
 #include <cassert>
+#include <functional>
 #include "psdd_manager.h"
 #include "psdd_unique_table.h"
 namespace {
@@ -19,6 +20,169 @@ void TagSddVtreeWithPsddVtree(const std::vector<Vtree *> &sdd_vtree_serialized,
   }
 }
 
+struct MultiplyFunctional {
+  std::size_t operator()(const std::pair<PsddNode *, PsddNode *> &arg) const {
+    return (std::hash<uintmax_t>{}(arg.first->node_index()) << 1) ^ (std::hash<uintmax_t>{}(arg.second->node_index()));
+  }
+  bool operator()(const std::pair<PsddNode *, PsddNode *> &arg1, const std::pair<PsddNode *, PsddNode *> &arg2) const {
+    return (arg1.second == arg2.second) && (arg1.first == arg2.first);
+  }
+};
+
+class ComputationCache {
+ public:
+  explicit ComputationCache(uint32_t variable_size) : cache_(2 * variable_size - 1) {}
+  std::pair<PsddNode *, Probability> Lookup(PsddNode *first_node, PsddNode *second_node, bool *found) const {
+    auto vtree_index = sdd_vtree_position(first_node->vtree_node());
+    assert(cache_.size() > vtree_index);
+    const auto &cache_at_vtree = cache_[vtree_index];
+    auto node_pair = std::pair<PsddNode *, PsddNode *>(first_node, second_node);
+    auto lookup_it = cache_at_vtree.find(node_pair);
+    if (lookup_it == cache_at_vtree.end()) {
+      *found = false;
+      return std::make_pair(nullptr, Probability::CreateFromDecimal(0));
+    } else {
+      *found = true;
+      return lookup_it->second;
+    }
+  }
+  void Update(PsddNode *first, PsddNode *second, const std::pair<PsddNode *, Probability> &result) {
+    auto vtree_index = sdd_vtree_position(first->vtree_node());
+    assert(cache_.size() > vtree_index);
+    std::pair<PsddNode *, PsddNode *> node_pair(first, second);
+    cache_[vtree_index][node_pair] = result;
+  }
+ private:
+  std::vector<std::unordered_map<std::pair<PsddNode *, PsddNode *>,
+                                 std::pair<PsddNode *, Probability>,
+                                 MultiplyFunctional,
+                                 MultiplyFunctional>> cache_;
+};
+
+std::pair<PsddNode *, PsddParameter> MultiplyWithCache(PsddNode *first,
+                                                       PsddNode *second,
+                                                       PsddManager *manager,
+                                                       uintmax_t flag_index,
+                                                       ComputationCache *cache) {
+  bool found = false;
+  auto result = cache->Lookup(first, second, &found);
+  if (found) return result;
+  assert(sdd_vtree_position(first->vtree_node()) == sdd_vtree_position(second->vtree_node()));
+  if (first->node_type() == DECISION_NODE_TYPE) {
+    assert(second->node_type() == DECISION_NODE_TYPE);
+    PsddDecisionNode *first_decision_node = first->psdd_decision_node();
+    PsddDecisionNode *second_decision_node = second->psdd_decision_node();
+    const auto &first_primes = first_decision_node->primes();
+    const auto &first_subs = first_decision_node->subs();
+    const auto &first_parameters = first_decision_node->parameters();
+    const auto &second_primes = second_decision_node->primes();
+    const auto &second_subs = second_decision_node->subs();
+    const auto &second_parameters = second_decision_node->parameters();
+    auto first_element_size = first_primes.size();
+    auto second_element_size = second_primes.size();
+    std::vector<PsddNode *> next_primes;
+    std::vector<PsddNode *> next_subs;
+    std::vector<PsddParameter> next_parameters;
+    PsddParameter partition = PsddParameter::CreateFromDecimal(0);
+    for (auto i = 0; i < first_element_size; ++i) {
+      PsddNode *cur_first_prime = first_primes[i];
+      PsddNode *cur_first_sub = first_subs[i];
+      PsddParameter cur_first_param = first_parameters[i];
+      for (auto j = 0; j < second_element_size; ++j) {
+        PsddNode *cur_second_prime = second_primes[j];
+        auto cur_prime_result = MultiplyWithCache(cur_first_prime, cur_second_prime, manager, flag_index, cache);
+        if (cur_prime_result.first == nullptr) {
+          continue;
+        }
+        PsddNode *cur_second_sub = second_subs[j];
+        auto cur_sub_result = MultiplyWithCache(cur_first_sub, cur_second_sub, manager, flag_index, cache);
+        if (cur_sub_result.first == nullptr) {
+          continue;
+        }
+        next_primes.push_back(cur_prime_result.first);
+        next_subs.push_back(cur_sub_result.first);
+        PsddParameter cur_second_param = second_parameters[j];
+        next_parameters.push_back(cur_second_param * cur_first_param * cur_prime_result.second * cur_sub_result.second);
+        partition = partition + next_parameters.back();
+      }
+    }
+    if (next_primes.empty()) {
+      std::pair<PsddNode *, Probability> comp_result = {nullptr, PsddParameter::CreateFromDecimal(0)};
+      cache->Update(first, second, comp_result);
+      return comp_result;
+    }
+    for (auto &single_parameter : next_parameters) {
+      single_parameter = single_parameter / partition;
+    }
+    auto new_node = manager->GetConformedPsddDecisionNode(next_primes, next_subs, next_parameters, flag_index);
+    std::pair<PsddNode *, Probability> comp_result = {new_node, partition};
+    cache->Update(first, second, comp_result);
+    return comp_result;
+  } else if (first->node_type() == LITERAL_NODE_TYPE) {
+    PsddLiteralNode *first_literal_node = first->psdd_literal_node();
+    if (second->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *second_literal_node = second->psdd_literal_node();
+      assert(first_literal_node->variable_index() == second_literal_node->variable_index());
+      if (first_literal_node->literal() == second_literal_node->literal()) {
+        PsddNode *new_node = manager->GetPsddLiteralNode(first_literal_node->literal(), flag_index);
+        std::pair<PsddNode *, Probability> comp_result = {new_node, Probability::CreateFromDecimal(1)};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      } else {
+        std::pair<PsddNode *, Probability> comp_result = {nullptr, Probability::CreateFromDecimal(0)};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      }
+    } else {
+      assert(second->node_type() == TOP_NODE_TYPE);
+      PsddTopNode *second_top_node = second->psdd_top_node();
+      assert(first_literal_node->variable_index() == second_top_node->variable_index());
+      if (first_literal_node->sign()) {
+        PsddNode *new_node = manager->GetPsddLiteralNode(first_literal_node->literal(), flag_index);
+        std::pair<PsddNode *, Probability> comp_result = {new_node, second_top_node->true_parameter()};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      } else {
+        PsddNode *new_node = manager->GetPsddLiteralNode(first_literal_node->literal(), flag_index);
+        std::pair<PsddNode *, Probability> comp_result = {new_node, second_top_node->false_parameter()};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      }
+    }
+  } else {
+    assert(first->node_type() == TOP_NODE_TYPE);
+    PsddTopNode *first_top_node = first->psdd_top_node();
+    if (second->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *second_literal_node = second->psdd_literal_node();
+      assert(first_top_node->variable_index() == second_literal_node->variable_index());
+      if (second_literal_node->sign()) {
+        PsddNode *new_node = manager->GetPsddLiteralNode(second_literal_node->literal(), flag_index);
+        std::pair<PsddNode *, Probability> comp_result = {new_node, first_top_node->true_parameter()};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      } else {
+        PsddNode *new_node = manager->GetPsddLiteralNode(second_literal_node->literal(), flag_index);
+        std::pair<PsddNode *, Probability> comp_result = {new_node, first_top_node->false_parameter()};
+        cache->Update(first, second, comp_result);
+        return comp_result;
+      }
+    } else {
+      assert(second->node_type() == TOP_NODE_TYPE);
+      PsddTopNode *second_top_node = second->psdd_top_node();
+      assert(first_top_node->variable_index() == second_top_node->variable_index());
+      PsddParameter pos_weight = first_top_node->true_parameter() * second_top_node->true_parameter();
+      PsddParameter neg_weight = first_top_node->false_parameter() * second_top_node->false_parameter();
+      PsddParameter partition = pos_weight + neg_weight;
+      PsddNode *new_node = manager->GetPsddTopNode(first_top_node->variable_index(),
+                                                   flag_index,
+                                                   pos_weight / partition,
+                                                   neg_weight / partition);
+      std::pair<PsddNode *, Probability> comp_result = {new_node, partition};
+      cache->Update(first, second, comp_result);
+      return comp_result;
+    }
+  }
+}
 }
 
 PsddManager *PsddManager::GetPsddManagerFromSddVtree(Vtree *sdd_vtree,
@@ -52,8 +216,6 @@ PsddManager *PsddManager::GetPsddManagerFromSddVtree(Vtree *sdd_vtree,
 PsddManager::PsddManager(Vtree *vtree, PsddUniqueTable *unique_table)
     : vtree_(vtree), unique_table_(unique_table), node_index_(0), leaf_vtree_map_() {
   std::vector<Vtree *> serialized_vtrees = vtree_util::SerializeVtree(vtree_);
-  SddLiteral variable_size = (serialized_vtrees.size() + 1) / 2;
-  leaf_vtree_map_.resize(variable_size + 1, nullptr);
   for (Vtree *cur_v : serialized_vtrees) {
     if (sdd_vtree_is_leaf(cur_v)) {
       leaf_vtree_map_[sdd_vtree_var(cur_v)] = cur_v;
@@ -188,7 +350,12 @@ PsddNode *PsddManager::GetTrueNode(Vtree *target_vtree_node,
         PsddNode *left_true_node = true_node_map->find(sdd_vtree_position(cur_left_node))->second;
         PsddNode *right_true_node = true_node_map->find(sdd_vtree_position(cur_right_node))->second;
         PsddNode *new_true_node =
-            new PsddDecisionNode(node_index_, cur_vtree_node, flag_index, {left_true_node}, {right_true_node}, {});
+            new PsddDecisionNode(node_index_,
+                                 cur_vtree_node,
+                                 flag_index,
+                                 {left_true_node},
+                                 {right_true_node},
+                                 {PsddParameter::CreateFromDecimal(1)});
         new_true_node = unique_table_->GetUniqueNode(new_true_node, &node_index_);
         true_node_map->insert(std::make_pair(sdd_vtree_position(cur_vtree_node), new_true_node));
       }
@@ -252,6 +419,7 @@ PsddTopNode *PsddManager::GetPsddTopNode(uint32_t variable_index,
                                          uintmax_t flag_index,
                                          const PsddParameter &positive_parameter,
                                          const PsddParameter &negative_parameter) {
+  assert(leaf_vtree_map_.find(variable_index) != leaf_vtree_map_.end());
   Vtree *target_vtree_node = leaf_vtree_map_[variable_index];
   assert(sdd_vtree_is_leaf(target_vtree_node));
   auto next_node = new PsddTopNode(node_index_,
@@ -264,6 +432,7 @@ PsddTopNode *PsddManager::GetPsddTopNode(uint32_t variable_index,
   return next_node;
 }
 PsddLiteralNode *PsddManager::GetPsddLiteralNode(int32_t literal, uintmax_t flag_index) {
+  assert(leaf_vtree_map_.find(abs(literal)) != leaf_vtree_map_.end());
   Vtree *target_vtree_node = leaf_vtree_map_[abs(literal)];
   assert(sdd_vtree_is_leaf(target_vtree_node));
   auto next_node = new PsddLiteralNode(node_index_, target_vtree_node, flag_index, literal);
@@ -276,6 +445,7 @@ PsddDecisionNode *PsddManager::GetConformedPsddDecisionNode(const std::vector<Ps
                                                             uintmax_t flag_index) {
   std::unordered_map<SddLiteral, PsddNode *> true_node_map;
   Vtree *lca = sdd_vtree_lca(primes[0]->vtree_node(), subs[0]->vtree_node(), vtree_);
+  assert(lca != nullptr);
   Vtree *left_child = sdd_vtree_left(lca);
   Vtree *right_child = sdd_vtree_right(lca);
   auto element_size = primes.size();
@@ -335,7 +505,12 @@ PsddNode *PsddManager::LoadPsddNode(Vtree *target_vtree, PsddNode *root_psdd_nod
   return result_node;
 }
 PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node, PsddNode *target_psdd_node, uintmax_t flag_index) {
-  std::unordered_map<SddLiteral, PsddNode*> true_node_map;
+  std::unordered_map<SddLiteral, PsddNode *> true_node_map;
   return NormalizePsddNode(target_vtree_node, target_psdd_node, flag_index, &true_node_map);
+}
+
+std::pair<PsddNode *, PsddParameter> PsddManager::Multiply(PsddNode *arg1, PsddNode *arg2, uintmax_t flag_index) {
+  ComputationCache cache((uint32_t) leaf_vtree_map_.size());
+  return MultiplyWithCache(arg1, arg2, this, flag_index, &cache);
 }
 

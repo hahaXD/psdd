@@ -266,6 +266,7 @@ class PsddMPETest : public testing::Test {
 TEST_F(PsddMPETest, CardinalityTest) {
   Vtree *vtree = sdd_vtree_new(20, "balanced");
   SddManager *manager = sdd_manager_new(vtree);
+  sdd_manager_auto_gc_and_minimize_off(manager);
   sdd_vtree_free(vtree);
   std::vector<SddLiteral> considered_vars;
   for (auto i = 1; i <= 20; ++i) {
@@ -351,6 +352,7 @@ TEST_F(PsddMPETest, CardinalityTest) {
     cur_node->CalculateParametersUsingLaplacianSmoothing(PsddParameter::CreateFromDecimal(0.2));
   }
   sdd_manager_free(manager);
+  unique_table->DeleteUnusedPsddNodes({});
   delete (unique_table);
   auto result = psdd_node_util::GetMPESolution(psdd_node);
   EXPECT_EQ(result.first, repetitive_data);

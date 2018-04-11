@@ -195,10 +195,10 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   std::bitset<MAX_VAR> instantiation_one;
   std::bitset<MAX_VAR> instantiation_two;
   for (auto i = 1; i <= 10; ++i) {
-    variables.set((size_t)i);
-    instantiation_one.set((size_t)i);
+    variables.set((size_t) i);
+    instantiation_one.set((size_t) i);
     if (i == 1 || i == 10) {
-      instantiation_two.set((size_t)i);
+      instantiation_two.set((size_t) i);
     }
   }
   Probability pr = psdd_node_util::Evaluate(variables, instantiation_one, new_decn_node);
@@ -221,6 +221,74 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   delete (psdd_manager);
 }
 
-TEST(PSDD_MANAGER_TEST, LOAD_PSDD_TEST){
+TEST(PSDD_MANAGER_TEST, LOAD_PSDD_TEST) {
+  Vtree *v = sdd_vtree_new(8, "balanced");
+  std::unordered_map<uint32_t, uint32_t> variable_identical_map;
+  for (auto i = 1; i <= 8; ++i) {
+    variable_identical_map[(uint32_t) i] = (uint32_t) i;
+  }
+  SddManager *test_sdd_manager = sdd_manager_new(v);
+  sdd_manager_auto_gc_and_minimize_off(test_sdd_manager);
+  PsddManager *test_psdd_manager = PsddManager::GetPsddManagerFromSddVtree(v, variable_identical_map);
+  sdd_vtree_free(v);
+  std::unordered_map<uint32_t, std::unordered_map<uint32_t, SddNode *>> cache;
+  SddNode *card_node = CardinalityK(8, 4, test_sdd_manager, &cache);
+  PsddNode *card_psdd =
+      test_psdd_manager->ConvertSddToPsdd(card_node, sdd_manager_vtree(test_sdd_manager), 0, variable_identical_map);
+  PsddNode *second_card_psdd = test_psdd_manager->LoadPsddNode(test_psdd_manager->vtree(), card_psdd, 0);
+  EXPECT_EQ(second_card_psdd, card_psdd);
+  second_card_psdd = test_psdd_manager->LoadPsddNode(test_psdd_manager->vtree(), card_psdd, 1);
+  EXPECT_NE(second_card_psdd, card_psdd);
+  size_t bound = 1 << 8;
+  std::bitset<MAX_VAR> variable_mask = bound - 1;
+  std::vector<PsddNode *> serialized_card_psdd = psdd_node_util::SerializePsddNodes(card_psdd);
+  std::vector<PsddNode *> serialized_second_card_psdd = psdd_node_util::SerializePsddNodes(second_card_psdd);
+  for (auto i = 0; i < bound; ++i) {
+    std::bitset<MAX_VAR> cur_instantiation = i;
+    EXPECT_EQ(psdd_node_util::IsConsistent(serialized_card_psdd, variable_mask, cur_instantiation),
+              psdd_node_util::IsConsistent(serialized_second_card_psdd, variable_mask, cur_instantiation));
+  }
+  // Check with a different vtree
+  Vtree *second_v = sdd_vtree_new(16, "balanced");
+  std::unordered_map<uint32_t, uint32_t> variable_map;
+  for (auto i = 1; i <= 16; ++i) {
+    uint32_t new_index = 0;
+    if (i % 2 == 0) {
+      new_index = (uint32_t) i / 2;
+    } else {
+      new_index = (uint32_t) (i + 1) / 2 + 5;
+    }
+    variable_map[(uint32_t) i] = new_index;
+  }
+  PsddManager *different_psdd_manager = PsddManager::GetPsddManagerFromSddVtree(second_v, variable_map);
+  PsddNode *second_psdd = different_psdd_manager->LoadPsddNode(different_psdd_manager->vtree(), card_psdd, 0);
+  sdd_vtree_free(second_v);
+  std::vector<PsddNode *> serialized_second_psdd = psdd_node_util::SerializePsddNodes(second_psdd);
+  for (auto i = 1; i <= 16; ++i) {
+    std::bitset<MAX_VAR> cur_instantiation = i;
+    EXPECT_EQ(psdd_node_util::IsConsistent(serialized_card_psdd, variable_mask, cur_instantiation),
+              psdd_node_util::IsConsistent(serialized_second_psdd, variable_mask, cur_instantiation));
+  }
+  auto second_node_mc = psdd_node_util::ModelCount(serialized_second_psdd);
+  auto card_psdd_mc = psdd_node_util::ModelCount(serialized_card_psdd);
+  EXPECT_EQ(card_psdd_mc<< 8, second_node_mc);
+  delete (test_psdd_manager);
+  delete (different_psdd_manager);
+  sdd_manager_free(test_sdd_manager);
+}
 
+TEST(PSDD_MANAGER_TEST, MULTIPLY_TEST){
+  Vtree* vtree = sdd_vtree_new(16, "balanced");
+  PsddManager* manager = PsddManager::GetPsddManagerFromVtree(vtree);
+  sdd_vtree_free(vtree);
+  PsddNode* uniform_true_node = manager->GetTrueNode(manager->vtree(), 0);
+  auto result = manager->Multiply(uniform_true_node, uniform_true_node, 0);
+  EXPECT_EQ(result.first, uniform_true_node);
+  EXPECT_EQ(result.second, PsddParameter::CreateFromDecimal(pow(2,-16)));
+  PsddNode* one_true = manager->NormalizePsddNode(manager->vtree(), manager->GetPsddLiteralNode(1, 0), 0);
+  PsddNode* one_false = manager->NormalizePsddNode(manager->vtree(), manager->GetPsddLiteralNode(-1,0), 0);
+  result = manager->Multiply(one_true, one_false, 0);
+  EXPECT_EQ(result.first, nullptr);
+  EXPECT_EQ(result.second, PsddParameter::CreateFromDecimal(0));
+  delete(manager);
 }
