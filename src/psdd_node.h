@@ -118,6 +118,7 @@ class PsddDecisionNode : public PsddNode {
   void ResetDataCount() override;
   void SampleParameters(RandomDoubleGenerator *generator) override;
   void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) override;
+  const std::vector<uintmax_t>& data_counts() const;
  private:
   void CalculateHashValue();
   std::vector<PsddNode *> primes_;
@@ -151,6 +152,8 @@ class PsddTopNode : public PsddNode {
   void ResetDataCount() override;
   void SampleParameters(RandomDoubleGenerator *generator) override;
   void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) override;
+  uintmax_t true_data_count() const;
+  uintmax_t false_data_count() const;
  private:
   void CalculateHashValue();
   uint32_t variable_index_;

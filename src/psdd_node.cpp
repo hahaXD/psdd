@@ -731,6 +731,9 @@ void PsddDecisionNode::DirectSample(std::bitset<MAX_VAR> *instantiation, RandomD
   }
   assert(false);
 }
+const std::vector<uintmax_t> &PsddDecisionNode::data_counts() const {
+  return data_counts_;
+}
 
 PsddTopNode::PsddTopNode(uintmax_t node_index,
                          Vtree *vtree_node,
@@ -824,5 +827,11 @@ void PsddTopNode::DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDouble
   if (uniform_rand < true_parameter_) {
     instantiation->set(variable_index_);
   }
+}
+uintmax_t PsddTopNode::true_data_count() const {
+  return true_data_count_;
+}
+uintmax_t PsddTopNode::false_data_count() const {
+  return false_data_count_;
 }
 
