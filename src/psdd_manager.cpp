@@ -332,15 +332,11 @@ PsddNode *PsddManager::GetTrueNode(Vtree *target_vtree_node,
     std::vector<Vtree *> post_order_vtree_nodes = vtree_util::SerializeVtree(target_vtree_node);
     for (auto it = post_order_vtree_nodes.rbegin(); it != post_order_vtree_nodes.rend(); it++) {
       Vtree *cur_vtree_node = *it;
-      assert(true_node_map->find(sdd_vtree_position(cur_vtree_node)) == true_node_map->end());
       if (sdd_vtree_is_leaf(cur_vtree_node)) {
-        PsddNode *new_true_node = new PsddTopNode(node_index_,
-                                                  cur_vtree_node,
-                                                  flag_index,
-                                                  static_cast<uint32_t>(sdd_vtree_var(cur_vtree_node)),
-                                                  PsddParameter::CreateFromDecimal(1),
-                                                  PsddParameter::CreateFromDecimal(1));
-        new_true_node = unique_table_->GetUniqueNode(new_true_node, &node_index_);
+        PsddNode *new_true_node = GetPsddTopNode((uint32_t) sdd_vtree_var(cur_vtree_node),
+                                                 flag_index,
+                                                 PsddParameter::CreateFromDecimal(1),
+                                                 PsddParameter::CreateFromDecimal(1));
         true_node_map->insert(std::make_pair(sdd_vtree_position(cur_vtree_node), new_true_node));
       } else {
         Vtree *cur_left_node = sdd_vtree_left(cur_vtree_node);
@@ -349,14 +345,10 @@ PsddNode *PsddManager::GetTrueNode(Vtree *target_vtree_node,
         assert(true_node_map->find(sdd_vtree_position(cur_right_node)) != true_node_map->end());
         PsddNode *left_true_node = true_node_map->find(sdd_vtree_position(cur_left_node))->second;
         PsddNode *right_true_node = true_node_map->find(sdd_vtree_position(cur_right_node))->second;
-        PsddNode *new_true_node =
-            new PsddDecisionNode(node_index_,
-                                 cur_vtree_node,
-                                 flag_index,
-                                 {left_true_node},
-                                 {right_true_node},
-                                 {PsddParameter::CreateFromDecimal(1)});
-        new_true_node = unique_table_->GetUniqueNode(new_true_node, &node_index_);
+        PsddNode *new_true_node = GetConformedPsddDecisionNode({left_true_node},
+                                                               {right_true_node},
+                                                               {PsddParameter::CreateFromDecimal(1)},
+                                                               flag_index);
         true_node_map->insert(std::make_pair(sdd_vtree_position(cur_vtree_node), new_true_node));
       }
     }
@@ -478,7 +470,7 @@ PsddNode *PsddManager::LoadPsddNode(Vtree *target_vtree, PsddNode *root_psdd_nod
                                                  flag_index,
                                                  cur_top_node->true_parameter(),
                                                  cur_top_node->false_parameter());
-      cur_top_node->SetUserData((uintmax_t) cur_top_node);
+      cur_top_node->SetUserData((uintmax_t) new_top_node);
     } else {
       assert(cur_node->node_type() == DECISION_NODE_TYPE);
       PsddDecisionNode *cur_decision_node = cur_node->psdd_decision_node();
