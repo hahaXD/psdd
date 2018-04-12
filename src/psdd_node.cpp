@@ -29,32 +29,32 @@ std::vector<Vtree *> SerializeVtree(Vtree *root) {
   return serialized_vtree;
 }
 Vtree *CopyVtree(Vtree *root) {
-  std::vector<Vtree*> orig_vtrees = SerializeVtree(root);
+  std::vector<Vtree *> orig_vtrees = SerializeVtree(root);
   auto orig_vtree_size = orig_vtrees.size();
-  for (int64_t i = (int64_t)orig_vtree_size-1; i >=0; --i){
-    Vtree* orig_vtree = orig_vtrees[i];
-    Vtree* new_node = nullptr;
-    if (sdd_vtree_is_leaf(orig_vtree)){
+  for (int64_t i = (int64_t) orig_vtree_size - 1; i >= 0; --i) {
+    Vtree *orig_vtree = orig_vtrees[i];
+    Vtree *new_node = nullptr;
+    if (sdd_vtree_is_leaf(orig_vtree)) {
       new_node = new_leaf_vtree(sdd_vtree_var(orig_vtree));
-    }else{
-      Vtree* orig_left = sdd_vtree_left(orig_vtree);
-      Vtree* orig_right = sdd_vtree_right(orig_vtree);
-      new_node = new_internal_vtree((Vtree*)sdd_vtree_data(orig_left), (Vtree*)sdd_vtree_data(orig_right));
+    } else {
+      Vtree *orig_left = sdd_vtree_left(orig_vtree);
+      Vtree *orig_right = sdd_vtree_right(orig_vtree);
+      new_node = new_internal_vtree((Vtree *) sdd_vtree_data(orig_left), (Vtree *) sdd_vtree_data(orig_right));
       sdd_vtree_set_data(nullptr, orig_left);
       sdd_vtree_set_data(nullptr, orig_right);
     }
-    sdd_vtree_set_data((void*)new_node, orig_vtree);
+    sdd_vtree_set_data((void *) new_node, orig_vtree);
   }
-  auto new_vtree = (Vtree*) sdd_vtree_data(root);
+  auto new_vtree = (Vtree *) sdd_vtree_data(root);
   sdd_vtree_set_data(nullptr, root);
   set_vtree_properties(new_vtree);
   return new_vtree;
 }
 std::vector<SddLiteral> VariablesUnderVtree(Vtree *root) {
   std::vector<SddLiteral> variables;
-  std::vector<Vtree*> vtree_serialized = SerializeVtree(root);
-  for (Vtree* cur_vtree : vtree_serialized){
-    if (sdd_vtree_is_leaf(cur_vtree)){
+  std::vector<Vtree *> vtree_serialized = SerializeVtree(root);
+  for (Vtree *cur_vtree : vtree_serialized) {
+    if (sdd_vtree_is_leaf(cur_vtree)) {
       variables.push_back(sdd_vtree_var(cur_vtree));
     }
   }
@@ -62,39 +62,39 @@ std::vector<SddLiteral> VariablesUnderVtree(Vtree *root) {
 }
 Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables) {
   std::unordered_set<SddLiteral> variable_set;
-  for (SddLiteral variable_index : variables){
+  for (SddLiteral variable_index : variables) {
     variable_set.insert(variable_index);
   }
-  std::vector<Vtree*> serialized_vtrees = SerializeVtree(orig_vtree);
-  for (auto vit = serialized_vtrees.rbegin(); vit != serialized_vtrees.rend(); ++vit){
-    Vtree* cur_vtree_node = *vit;
-    if (sdd_vtree_is_leaf(cur_vtree_node)){
+  std::vector<Vtree *> serialized_vtrees = SerializeVtree(orig_vtree);
+  for (auto vit = serialized_vtrees.rbegin(); vit != serialized_vtrees.rend(); ++vit) {
+    Vtree *cur_vtree_node = *vit;
+    if (sdd_vtree_is_leaf(cur_vtree_node)) {
       SddLiteral cur_variable_index = sdd_vtree_var(cur_vtree_node);
-      if (variable_set.find(cur_variable_index) != variable_set.end()){
-        Vtree* new_vtree_node = new_leaf_vtree(cur_variable_index);
-        sdd_vtree_set_data((void*)new_vtree_node, cur_vtree_node);
-      }else{
+      if (variable_set.find(cur_variable_index) != variable_set.end()) {
+        Vtree *new_vtree_node = new_leaf_vtree(cur_variable_index);
+        sdd_vtree_set_data((void *) new_vtree_node, cur_vtree_node);
+      } else {
         sdd_vtree_set_data(nullptr, cur_vtree_node);
       }
-    }else{
-      Vtree* left_child = sdd_vtree_left(cur_vtree_node);
-      Vtree* right_child = sdd_vtree_right(cur_vtree_node);
-      auto new_left_child = (Vtree*) sdd_vtree_data(left_child);
+    } else {
+      Vtree *left_child = sdd_vtree_left(cur_vtree_node);
+      Vtree *right_child = sdd_vtree_right(cur_vtree_node);
+      auto new_left_child = (Vtree *) sdd_vtree_data(left_child);
       sdd_vtree_set_data(nullptr, left_child);
-      auto new_right_child = (Vtree*) sdd_vtree_data(right_child);
+      auto new_right_child = (Vtree *) sdd_vtree_data(right_child);
       sdd_vtree_set_data(nullptr, right_child);
-      if (new_left_child && new_right_child){
-        Vtree* new_vtree_node = new_internal_vtree(new_left_child, new_right_child);
-        sdd_vtree_set_data((void*)new_vtree_node, cur_vtree_node);
-      }else if (new_left_child || new_right_child){
-        Vtree* new_vtree_node = new_left_child != nullptr ? new_left_child : new_right_child;
-        sdd_vtree_set_data((void*) new_vtree_node, cur_vtree_node);
-      }else{
+      if (new_left_child && new_right_child) {
+        Vtree *new_vtree_node = new_internal_vtree(new_left_child, new_right_child);
+        sdd_vtree_set_data((void *) new_vtree_node, cur_vtree_node);
+      } else if (new_left_child || new_right_child) {
+        Vtree *new_vtree_node = new_left_child != nullptr ? new_left_child : new_right_child;
+        sdd_vtree_set_data((void *) new_vtree_node, cur_vtree_node);
+      } else {
         sdd_vtree_set_data(nullptr, cur_vtree_node);
       }
     }
   }
-  auto new_vtree_root = (Vtree*)sdd_vtree_data(orig_vtree);
+  auto new_vtree_root = (Vtree *) sdd_vtree_data(orig_vtree);
   sdd_vtree_set_data(nullptr, orig_vtree);
   set_vtree_properties(new_vtree_root);
   return new_vtree_root;
@@ -102,12 +102,21 @@ Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables)
 }
 namespace psdd_node_util {
 
-SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd_nodes, SddManager *sdd_manager) {
+SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd_nodes,
+                                  const std::unordered_map<SddLiteral, SddLiteral> &variable_map,
+                                  SddManager *sdd_manager) {
   for (auto node_it = serialized_psdd_nodes.rbegin(); node_it != serialized_psdd_nodes.rend(); ++node_it) {
     PsddNode *cur_node = *node_it;
     if (cur_node->node_type() == LITERAL_NODE_TYPE) {
       PsddLiteralNode *cur_literal = cur_node->psdd_literal_node();
-      SddNode *cur_lit = sdd_manager_literal(cur_literal->literal(), sdd_manager);
+      uint32_t psdd_variable_index = cur_literal->variable_index();
+      assert(variable_map.find((SddLiteral)psdd_variable_index) != variable_map.end());
+      SddLiteral sdd_variable_index = variable_map.find((SddLiteral) psdd_variable_index)->second;
+      SddLiteral sdd_literal = sdd_variable_index;
+      if (!cur_literal->sign()){
+        sdd_literal = -sdd_literal;
+      }
+      SddNode *cur_lit = sdd_manager_literal(sdd_literal, sdd_manager);
       cur_node->SetUserData((uintmax_t) cur_lit);
     } else if (cur_node->node_type() == DECISION_NODE_TYPE) {
       PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
@@ -125,7 +134,6 @@ SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd
       cur_node->SetUserData((uintmax_t) cur_logic);
     } else {
       assert(cur_node->node_type() == TOP_NODE_TYPE);
-      PsddTopNode *cur_top = cur_node->psdd_top_node();
       cur_node->SetUserData((uintmax_t) sdd_manager_true(sdd_manager));
     }
   }
@@ -273,41 +281,41 @@ std::pair<std::bitset<MAX_VAR>, Probability> GetMPESolution(const std::vector<Ps
           max_index = i;
         }
       }
-      auto * cache_pair = new std::pair<PsddParameter, uintmax_t>(max_product, max_index);
+      auto *cache_pair = new std::pair<PsddParameter, uintmax_t>(max_product, max_index);
       cur_node->SetUserData((uintmax_t) cache_pair);
     }
   }
   // Extract solution;
-  std::queue<PsddNode*> node_queue;
+  std::queue<PsddNode *> node_queue;
   node_queue.push(serialized_psdd_nodes[0]);
   std::bitset<MAX_VAR> max_instantiation;
-  auto* cache_pair = (std::pair<PsddParameter, uintmax_t>*) serialized_psdd_nodes[0]->user_data();
+  auto *cache_pair = (std::pair<PsddParameter, uintmax_t> *) serialized_psdd_nodes[0]->user_data();
   auto max_prob = cache_pair->first;
-  while (!node_queue.empty()){
-    PsddNode* cur_node = node_queue.front();
+  while (!node_queue.empty()) {
+    PsddNode *cur_node = node_queue.front();
     node_queue.pop();
-    if (cur_node->node_type() == LITERAL_NODE_TYPE){
-      PsddLiteralNode * cur_literal_node = cur_node->psdd_literal_node();
-      if (cur_literal_node->sign()){
+    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *cur_literal_node = cur_node->psdd_literal_node();
+      if (cur_literal_node->sign()) {
         max_instantiation.set(cur_literal_node->variable_index());
       }
-    }else if (cur_node->node_type() == DECISION_NODE_TYPE){
-      PsddDecisionNode* cur_decn_node = cur_node->psdd_decision_node();
-      cache_pair = (std::pair<PsddParameter, uintmax_t>*) cur_node->user_data();
+    } else if (cur_node->node_type() == DECISION_NODE_TYPE) {
+      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+      cache_pair = (std::pair<PsddParameter, uintmax_t> *) cur_node->user_data();
       node_queue.push(cur_decn_node->primes()[cache_pair->second]);
       node_queue.push(cur_decn_node->subs()[cache_pair->second]);
-    }else{
+    } else {
       assert(cur_node->node_type() == TOP_NODE_TYPE);
-      PsddTopNode* cur_top_node = cur_node->psdd_top_node();
-      cache_pair = (std::pair<PsddParameter, uintmax_t>*) cur_top_node->user_data();
-      if (cache_pair->second){
+      PsddTopNode *cur_top_node = cur_node->psdd_top_node();
+      cache_pair = (std::pair<PsddParameter, uintmax_t> *) cur_top_node->user_data();
+      if (cache_pair->second) {
         max_instantiation.set(cur_top_node->variable_index());
       }
     }
   }
-  for (PsddNode* cur_node : serialized_psdd_nodes){
-    cache_pair = (std::pair<PsddParameter, uintmax_t>*) cur_node->user_data();
-    delete(cache_pair);
+  for (PsddNode *cur_node : serialized_psdd_nodes) {
+    cache_pair = (std::pair<PsddParameter, uintmax_t> *) cur_node->user_data();
+    delete (cache_pair);
     cur_node->SetUserData(0);
   }
   return {max_instantiation, max_prob};

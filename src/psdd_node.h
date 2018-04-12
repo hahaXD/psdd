@@ -118,7 +118,7 @@ class PsddDecisionNode : public PsddNode {
   void ResetDataCount() override;
   void SampleParameters(RandomDoubleGenerator *generator) override;
   void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) override;
-  const std::vector<uintmax_t>& data_counts() const;
+  const std::vector<uintmax_t> &data_counts() const;
  private:
   void CalculateHashValue();
   std::vector<PsddNode *> primes_;
@@ -163,11 +163,11 @@ class PsddTopNode : public PsddNode {
   uintmax_t false_data_count_;
 };
 
-namespace vtree_util{
-std::vector<Vtree*> SerializeVtree(Vtree* root);
-Vtree* CopyVtree(Vtree* root);
-std::vector<SddLiteral> VariablesUnderVtree(Vtree* root);
-Vtree* ProjectVtree(Vtree* orig_vtree, const std::vector<SddLiteral>& variables);
+namespace vtree_util {
+std::vector<Vtree *> SerializeVtree(Vtree *root);
+Vtree *CopyVtree(Vtree *root);
+std::vector<SddLiteral> VariablesUnderVtree(Vtree *root);
+Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables);
 }
 
 namespace psdd_node_util {
@@ -183,7 +183,7 @@ Probability Evaluate(const std::bitset<MAX_VAR> &variables,
                      const std::vector<PsddNode *> &serialized_nodes);
 Probability Evaluate(const std::bitset<MAX_VAR> &variables,
                      const std::bitset<MAX_VAR> &instantiation,
-                     PsddNode* root_node);
+                     PsddNode *root_node);
 bool IsConsistent(PsddNode *node,
                   const std::bitset<MAX_VAR> &variable_mask,
                   const std::bitset<MAX_VAR> &partial_instantiation);
@@ -191,6 +191,8 @@ bool IsConsistent(const std::vector<PsddNode *> &nodes,
                   const std::bitset<MAX_VAR> &variable_mask,
                   const std::bitset<MAX_VAR> &partial_instantiation);
 
-SddNode* ConvertPsddNodeToSddNode(const std::vector<PsddNode*>& serialized_psdd_nodes, SddManager* sdd_manager);
+SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd_nodes,
+                                  const std::unordered_map<SddLiteral, SddLiteral> &variable_map,
+                                  SddManager *sdd_manager);
 }
 #endif //STRUCTURED_BAYESIAN_NETWORK_PSDD_NODE_H
