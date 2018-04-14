@@ -113,6 +113,7 @@ std::pair<PsddNode *, PsddParameter> MultiplyWithCache(PsddNode *first,
     }
     for (auto &single_parameter : next_parameters) {
       single_parameter = single_parameter / partition;
+      assert(single_parameter != PsddParameter::CreateFromDecimal(0));
     }
     auto new_node = manager->GetConformedPsddDecisionNode(next_primes, next_subs, next_parameters, flag_index);
     std::pair<PsddNode *, Probability> comp_result = {new_node, partition};
@@ -177,6 +178,8 @@ std::pair<PsddNode *, PsddParameter> MultiplyWithCache(PsddNode *first,
                                                    flag_index,
                                                    pos_weight / partition,
                                                    neg_weight / partition);
+      assert(new_node->psdd_top_node()->true_parameter() != PsddParameter::CreateFromDecimal(0));
+      assert(new_node->psdd_top_node()->false_parameter() != PsddParameter::CreateFromDecimal(0));
       std::pair<PsddNode *, Probability> comp_result = {new_node, partition};
       cache->Update(first, second, comp_result);
       return comp_result;
@@ -238,6 +241,9 @@ PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node,
   if (sdd_node_is_false(root_node)) {
     // nullptr for PsddNode means false
     return nullptr;
+  }
+  if (sdd_node_is_true(root_node)){
+    return GetTrueNode(vtree_,flag_index);
   }
   std::vector<Vtree *> serialized_psdd_vtrees = vtree_util::SerializeVtree(vtree_);
   std::vector<Vtree *> serialized_sdd_vtrees = vtree_util::SerializeVtree(sdd_vtree);
