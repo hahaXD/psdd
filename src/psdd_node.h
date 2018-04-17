@@ -17,6 +17,7 @@ extern "C" {
 #include "psdd_node.h"
 #include "binary_data.h"
 #include "random_double_generator.h"
+#include <gmpxx.h>
 
 #define LITERAL_NODE_TYPE 1
 #define DECISION_NODE_TYPE 2
@@ -177,7 +178,7 @@ std::unordered_map<uintmax_t, PsddNode *> GetCoveredPsddNodes(const std::vector<
 void SetActivationFlag(const std::bitset<MAX_VAR> &evidence, const std::vector<PsddNode *> &serialized_psdd_nodes);
 std::pair<std::bitset<MAX_VAR>, Probability> GetMPESolution(const std::vector<PsddNode *> &serialized_psdd_nodes);
 std::pair<std::bitset<MAX_VAR>, Probability> GetMPESolution(PsddNode *psdd_node);
-uintmax_t ModelCount(const std::vector<PsddNode *> &serialized_nodes);
+mpz_class ModelCount(const std::vector<PsddNode *> &serialized_nodes);
 Probability Evaluate(const std::bitset<MAX_VAR> &variables,
                      const std::bitset<MAX_VAR> &instantiation,
                      const std::vector<PsddNode *> &serialized_nodes);

@@ -75,7 +75,7 @@ TEST(SDD_TO_PSDD_TEST, MODEL_COUNT_TEST) {
   PsddNode *result_psdd =
       psdd_manager->ConvertSddToPsdd(cardinality_node, sdd_manager_vtree(sdd_manager), 0, variable_mapping);
   std::vector<PsddNode *> serialized_nodes = psdd_node_util::SerializePsddNodes(result_psdd);
-  EXPECT_EQ(sdd_global_model_count(cardinality_node, sdd_manager), psdd_node_util::ModelCount(serialized_nodes));
+  EXPECT_EQ(sdd_global_model_count(cardinality_node, sdd_manager), psdd_node_util::ModelCount(serialized_nodes).get_ui());
   delete psdd_manager;
   sdd_manager_free(sdd_manager);
 }
@@ -206,7 +206,7 @@ TEST(PSDD_MANAGER_TEST, GET_CONFORMED_DECISION_NODE) {
   EXPECT_EQ(pr, pr2);
   EXPECT_EQ(new_decn_node, new_second_node);
   EXPECT_EQ(pr, PsddParameter::CreateFromDecimal(0.72));
-  EXPECT_EQ(psdd_node_util::ModelCount(psdd_node_util::SerializePsddNodes(new_decn_node)), 1<<10);
+  EXPECT_EQ(psdd_node_util::ModelCount(psdd_node_util::SerializePsddNodes(new_decn_node)).get_ui(), 1<<10);
   new_second_node = psdd_manager->GetConformedPsddDecisionNode({neg_one, pos_one},
                                                                {top_ten, top_ten_second},
                                                                {PsddParameter::CreateFromDecimal(0.2),
@@ -270,8 +270,8 @@ TEST(PSDD_MANAGER_TEST, LOAD_PSDD_TEST) {
     EXPECT_EQ(psdd_node_util::IsConsistent(serialized_card_psdd, variable_mask, cur_instantiation),
               psdd_node_util::IsConsistent(serialized_second_psdd, variable_mask, cur_instantiation));
   }
-  auto second_node_mc = psdd_node_util::ModelCount(serialized_second_psdd);
-  auto card_psdd_mc = psdd_node_util::ModelCount(serialized_card_psdd);
+  auto second_node_mc = psdd_node_util::ModelCount(serialized_second_psdd).get_ui();
+  auto card_psdd_mc = psdd_node_util::ModelCount(serialized_card_psdd).get_ui();
   EXPECT_EQ(card_psdd_mc<< 8, second_node_mc);
   delete (test_psdd_manager);
   delete (different_psdd_manager);

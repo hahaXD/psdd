@@ -12,6 +12,7 @@
 #include <random>
 #include <cmath>
 #include <iostream>
+#include <gmp.h>
 namespace vtree_util {
 std::vector<Vtree *> SerializeVtree(Vtree *root) {
   std::vector<Vtree *> serialized_vtree;
@@ -325,8 +326,8 @@ std::pair<std::bitset<MAX_VAR>, Probability> GetMPESolution(PsddNode *psdd_node)
   auto serialized_psdd_nodes = psdd_node_util::SerializePsddNodes(psdd_node);
   return GetMPESolution(serialized_psdd_nodes);
 }
-uintmax_t ModelCount(const std::vector<PsddNode *> &serialized_nodes) {
-  std::unordered_map<uintmax_t, uintmax_t> count_cache;
+mpz_class ModelCount(const std::vector<PsddNode *> &serialized_nodes) {
+  std::unordered_map<uintmax_t, mpz_class> count_cache;
   for (auto node_it = serialized_nodes.rbegin(); node_it != serialized_nodes.rend(); ++node_it) {
     PsddNode *cur_node = *node_it;
     if (cur_node->node_type() == LITERAL_NODE_TYPE) {
@@ -339,11 +340,15 @@ uintmax_t ModelCount(const std::vector<PsddNode *> &serialized_nodes) {
       const auto &primes = cur_decn_node->primes();
       const auto &subs = cur_decn_node->subs();
       auto element_size = primes.size();
-      uintmax_t total_count = 0;
+      mpz_class total_count = 0;
       for (auto i = 0; i < element_size; ++i) {
         PsddNode *cur_prime = primes[i];
         PsddNode *cur_sub = subs[i];
-        total_count += count_cache[cur_prime->node_index()] * count_cache[cur_sub->node_index()];
+        const mpz_class& a = count_cache[cur_prime->node_index()];
+        const mpz_class& b = count_cache[cur_sub->node_index()];
+        mpz_class product = 0;
+        mpz_mul(product.get_mpz_t(), a.get_mpz_t(), b.get_mpz_t());
+        mpz_add(total_count.get_mpz_t(), total_count.get_mpz_t(), product.get_mpz_t());
       }
       count_cache[cur_node->node_index()] = total_count;
     }
