@@ -13,6 +13,8 @@
 #include <cmath>
 #include <iostream>
 #include <gmp.h>
+#include <fstream>
+
 namespace vtree_util {
 std::vector<Vtree *> SerializeVtree(Vtree *root) {
   std::vector<Vtree *> serialized_vtree;
@@ -111,10 +113,10 @@ SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd
     if (cur_node->node_type() == LITERAL_NODE_TYPE) {
       PsddLiteralNode *cur_literal = cur_node->psdd_literal_node();
       uint32_t psdd_variable_index = cur_literal->variable_index();
-      assert(variable_map.find((SddLiteral)psdd_variable_index) != variable_map.end());
+      assert(variable_map.find((SddLiteral) psdd_variable_index) != variable_map.end());
       SddLiteral sdd_variable_index = variable_map.find((SddLiteral) psdd_variable_index)->second;
       SddLiteral sdd_literal = sdd_variable_index;
-      if (!cur_literal->sign()){
+      if (!cur_literal->sign()) {
         sdd_literal = -sdd_literal;
       }
       SddNode *cur_lit = sdd_manager_literal(sdd_literal, sdd_manager);
@@ -344,8 +346,8 @@ mpz_class ModelCount(const std::vector<PsddNode *> &serialized_nodes) {
       for (auto i = 0; i < element_size; ++i) {
         PsddNode *cur_prime = primes[i];
         PsddNode *cur_sub = subs[i];
-        const mpz_class& a = count_cache[cur_prime->node_index()];
-        const mpz_class& b = count_cache[cur_sub->node_index()];
+        const mpz_class &a = count_cache[cur_prime->node_index()];
+        const mpz_class &b = count_cache[cur_sub->node_index()];
         mpz_class product = 0;
         mpz_mul(product.get_mpz_t(), a.get_mpz_t(), b.get_mpz_t());
         mpz_add(total_count.get_mpz_t(), total_count.get_mpz_t(), product.get_mpz_t());
@@ -443,6 +445,52 @@ Probability Evaluate(const std::bitset<MAX_VAR> &variables,
                      PsddNode *root_node) {
   std::vector<PsddNode *> serialized_nodes = SerializePsddNodes(root_node);
   return Evaluate(variables, instantiation, serialized_nodes);
+}
+void WritePsddToFile(PsddNode *root_node, const char *output_filename) {
+  auto serialized_psdds = SerializePsddNodes(root_node);
+  std::string psdd_content =
+      "c ids of psdd nodes start at 0\nc psdd nodes appear bottom-up, children before parents\nc file syntax:\nc psdd count-of-psdd-nodes\nc L id-of-literal-sdd-node id-of-vtree literal\nc T id-of-trueNode-sdd-node id-of-vtree variable log(pos_prob) log(neg_prob)\nc D id-of-decomposition-sdd-node id-of-vtree number-of-elements {id-of-prime id-of-sub log(elementProb)}*\nc\n";
+  psdd_content += "psdd " + std::to_string(serialized_psdds.size()) + "\n";
+  uintmax_t node_index = 0;
+  for (auto it = serialized_psdds.rbegin(); it != serialized_psdds.rend(); ++it) {
+    PsddNode *cur = *it;
+    if (cur->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *cur_literal = cur->psdd_literal_node();
+      psdd_content +=
+          "L " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_literal->vtree_node())) + " "
+              + std::to_string(cur_literal->literal()) + "\n";
+    } else if (cur->node_type() == TOP_NODE_TYPE) {
+      PsddTopNode *cur_top_node = cur->psdd_top_node();
+      psdd_content +=
+          "T " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_top_node->vtree_node())) + " "
+              + std::to_string(cur_top_node->variable_index()) + " "
+              + std::to_string(cur_top_node->true_parameter().parameter()) + " "
+              + std::to_string(cur_top_node->false_parameter().parameter()) + "\n";
+    } else {
+      assert(cur->node_type() == DECISION_NODE_TYPE);
+      PsddDecisionNode* cur_decision_node = cur->psdd_decision_node();
+      psdd_content += "D " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_decision_node->vtree_node())) + " " + std::to_string(cur_decision_node->primes().size());
+      const auto& primes = cur_decision_node -> primes();
+      const auto& subs = cur_decision_node->subs();
+      const auto& params = cur_decision_node->parameters();
+      auto element_size = primes.size();
+      for (auto i = 0 ; i < element_size; ++i){
+        psdd_content += " " + std::to_string(primes[i]->user_data());
+        psdd_content += " " + std::to_string(subs[i]->user_data());
+        psdd_content += " " + std::to_string(params[i].parameter());
+      }
+      psdd_content += "\n";
+    }
+    cur->SetUserData(node_index);
+    node_index += 1;
+  }
+  std::ofstream output_file;
+  output_file.open(output_filename);
+  output_file << psdd_content;
+  output_file.close();
+  for (PsddNode* cur_node : serialized_psdds){
+    cur_node->SetUserData(0);
+  }
 }
 }
 

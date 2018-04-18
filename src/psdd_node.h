@@ -195,5 +195,7 @@ bool IsConsistent(const std::vector<PsddNode *> &nodes,
 SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd_nodes,
                                   const std::unordered_map<SddLiteral, SddLiteral> &variable_map,
                                   SddManager *sdd_manager);
+
+void WritePsddToFile(PsddNode* root_node, const char* output_filename);
 }
 #endif //STRUCTURED_BAYESIAN_NETWORK_PSDD_NODE_H
