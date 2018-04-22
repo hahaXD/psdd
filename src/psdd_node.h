@@ -167,6 +167,7 @@ class PsddTopNode : public PsddNode {
 namespace vtree_util {
 std::vector<Vtree *> SerializeVtree(Vtree *root);
 Vtree *CopyVtree(Vtree *root);
+Vtree *CopyVtree(Vtree* root, const std::unordered_map<SddLiteral, SddLiteral>& variable_map);
 std::vector<SddLiteral> VariablesUnderVtree(Vtree *root);
 Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables);
 }
@@ -197,5 +198,7 @@ SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd
                                   SddManager *sdd_manager);
 
 void WritePsddToFile(PsddNode* root_node, const char* output_filename);
+
+std::unordered_map<uint32_t, std::pair<Probability, Probability>> GetMarginals(const std::vector<PsddNode*>& serialized_nodes);
 }
 #endif //STRUCTURED_BAYESIAN_NETWORK_PSDD_NODE_H

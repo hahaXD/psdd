@@ -6,6 +6,9 @@
 #include <stack>
 #include <cassert>
 #include <functional>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include "psdd_manager.h"
 #include "psdd_unique_table.h"
 namespace {
@@ -242,8 +245,8 @@ PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node,
     // nullptr for PsddNode means false
     return nullptr;
   }
-  if (sdd_node_is_true(root_node)){
-    return GetTrueNode(vtree_,flag_index);
+  if (sdd_node_is_true(root_node)) {
+    return GetTrueNode(vtree_, flag_index);
   }
   std::vector<Vtree *> serialized_psdd_vtrees = vtree_util::SerializeVtree(vtree_);
   std::vector<Vtree *> serialized_sdd_vtrees = vtree_util::SerializeVtree(sdd_vtree);
@@ -510,5 +513,77 @@ PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node, PsddNode *tar
 std::pair<PsddNode *, PsddParameter> PsddManager::Multiply(PsddNode *arg1, PsddNode *arg2, uintmax_t flag_index) {
   ComputationCache cache((uint32_t) leaf_vtree_map_.size());
   return MultiplyWithCache(arg1, arg2, this, flag_index, &cache);
+}
+
+PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename, uintmax_t flag_index) {
+  std::ifstream psdd_file;
+  std::unordered_map<uintmax_t, PsddNode *> construct_cache;
+  psdd_file.open(psdd_filename);
+  if (!psdd_file) {
+    std::cerr << "File " << psdd_filename << " cannot be open.";
+    exit(1); // terminate with error
+  }
+  std::string line;
+  PsddNode* root_node = nullptr;
+  while (std::getline(psdd_file, line)) {
+    if (line[0] == 'c') {
+      continue;
+    }
+    if (line[0] == 'p') {
+      continue;
+    }
+    if (line[0] == 'L') {
+      std::istringstream iss(line.substr(1, std::string::npos));
+      uintmax_t node_index;
+      uint32_t vtree_index;
+      int32_t literal;
+      iss >> node_index >> vtree_index >> literal;
+      PsddNode *cur_node = GetPsddLiteralNode(literal, flag_index);
+      construct_cache[node_index] = cur_node;
+      root_node = cur_node;
+    } else if (line[0] == 'T') {
+      std::istringstream iss(line.substr(1, std::string::npos));
+      uintmax_t node_index;
+      uint32_t vtree_index;
+      uint32_t variable_index;
+      double neg_log_pr;
+      double pos_log_pr;
+      iss >> node_index >> vtree_index >> variable_index >> neg_log_pr >> pos_log_pr;
+      PsddNode *cur_node = GetPsddTopNode(variable_index,
+                                          flag_index,
+                                          PsddParameter::CreateFromLog(pos_log_pr),
+                                          PsddParameter::CreateFromLog(neg_log_pr));
+      construct_cache[node_index] = cur_node;
+      root_node = cur_node;
+    } else {
+      assert(line[0] == 'D');
+      std::istringstream iss(line.substr(1, std::string::npos));
+      uintmax_t node_index;
+      int vtree_index;
+      uintmax_t element_size;
+      iss >> node_index >> vtree_index >> element_size;
+      std::vector<PsddNode*> primes;
+      std::vector<PsddNode*> subs;
+      std::vector<PsddParameter> params;
+      for (auto j = 0; j < element_size; j++) {
+        uintmax_t prime_index;
+        uintmax_t sub_index;
+        double weight_in_log;
+        iss >> prime_index >> sub_index >> weight_in_log;
+        assert(construct_cache.find(prime_index) != construct_cache.end());
+        assert(construct_cache.find(sub_index) != construct_cache.end());
+        PsddNode *prime_node = construct_cache[prime_index];
+        PsddNode *sub_node = construct_cache[sub_index];
+        primes.push_back(prime_node);
+        subs.push_back(sub_node);
+        params.push_back(PsddParameter::CreateFromLog(weight_in_log));
+      }
+      PsddNode* cur_node = GetConformedPsddDecisionNode(primes, subs, params, flag_index);
+      construct_cache[node_index] = cur_node;
+      root_node = cur_node;
+    }
+  }
+  psdd_file.close();
+  return root_node;
 }
 

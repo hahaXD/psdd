@@ -102,6 +102,29 @@ Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables)
   set_vtree_properties(new_vtree_root);
   return new_vtree_root;
 }
+Vtree *vtree_util::CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &variable_map) {
+  std::vector<Vtree *> orig_vtrees = SerializeVtree(root);
+  auto orig_vtree_size = orig_vtrees.size();
+  for (int64_t i = (int64_t) orig_vtree_size - 1; i >= 0; --i) {
+    Vtree *orig_vtree = orig_vtrees[i];
+    Vtree *new_node = nullptr;
+    if (sdd_vtree_is_leaf(orig_vtree)) {
+      assert(variable_map.find(sdd_vtree_var(orig_vtree)) != variable_map.end());
+      new_node = new_leaf_vtree(variable_map.find(sdd_vtree_var(orig_vtree))->second);
+    } else {
+      Vtree *orig_left = sdd_vtree_left(orig_vtree);
+      Vtree *orig_right = sdd_vtree_right(orig_vtree);
+      new_node = new_internal_vtree((Vtree *) sdd_vtree_data(orig_left), (Vtree *) sdd_vtree_data(orig_right));
+      sdd_vtree_set_data(nullptr, orig_left);
+      sdd_vtree_set_data(nullptr, orig_right);
+    }
+    sdd_vtree_set_data((void *) new_node, orig_vtree);
+  }
+  auto new_vtree = (Vtree *) sdd_vtree_data(root);
+  sdd_vtree_set_data(nullptr, root);
+  set_vtree_properties(new_vtree);
+  return new_vtree;
+}
 }
 namespace psdd_node_util {
 
@@ -449,7 +472,7 @@ Probability Evaluate(const std::bitset<MAX_VAR> &variables,
 void WritePsddToFile(PsddNode *root_node, const char *output_filename) {
   auto serialized_psdds = SerializePsddNodes(root_node);
   std::string psdd_content =
-      "c ids of psdd nodes start at 0\nc psdd nodes appear bottom-up, children before parents\nc file syntax:\nc psdd count-of-psdd-nodes\nc L id-of-literal-sdd-node id-of-vtree literal\nc T id-of-trueNode-sdd-node id-of-vtree variable log(pos_prob) log(neg_prob)\nc D id-of-decomposition-sdd-node id-of-vtree number-of-elements {id-of-prime id-of-sub log(elementProb)}*\nc\n";
+      "c ids of psdd nodes start at 0\nc psdd nodes appear bottom-up, children before parents\nc file syntax:\nc psdd count-of-psdd-nodes\nc L id-of-literal-sdd-node id-of-vtree literal\nc T id-of-trueNode-sdd-node id-of-vtree variable log(neg_prob) log(pos_prob)\nc D id-of-decomposition-sdd-node id-of-vtree number-of-elements {id-of-prime id-of-sub log(elementProb)}*\nc\n";
   psdd_content += "psdd " + std::to_string(serialized_psdds.size()) + "\n";
   uintmax_t node_index = 0;
   for (auto it = serialized_psdds.rbegin(); it != serialized_psdds.rend(); ++it) {
@@ -464,17 +487,19 @@ void WritePsddToFile(PsddNode *root_node, const char *output_filename) {
       psdd_content +=
           "T " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_top_node->vtree_node())) + " "
               + std::to_string(cur_top_node->variable_index()) + " "
-              + std::to_string(cur_top_node->true_parameter().parameter()) + " "
-              + std::to_string(cur_top_node->false_parameter().parameter()) + "\n";
+              + std::to_string(cur_top_node->false_parameter().parameter()) + " "
+              + std::to_string(cur_top_node->true_parameter().parameter()) + "\n";
     } else {
       assert(cur->node_type() == DECISION_NODE_TYPE);
-      PsddDecisionNode* cur_decision_node = cur->psdd_decision_node();
-      psdd_content += "D " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_decision_node->vtree_node())) + " " + std::to_string(cur_decision_node->primes().size());
-      const auto& primes = cur_decision_node -> primes();
-      const auto& subs = cur_decision_node->subs();
-      const auto& params = cur_decision_node->parameters();
+      PsddDecisionNode *cur_decision_node = cur->psdd_decision_node();
+      psdd_content +=
+          "D " + std::to_string(node_index) + " " + std::to_string(sdd_vtree_position(cur_decision_node->vtree_node()))
+              + " " + std::to_string(cur_decision_node->primes().size());
+      const auto &primes = cur_decision_node->primes();
+      const auto &subs = cur_decision_node->subs();
+      const auto &params = cur_decision_node->parameters();
       auto element_size = primes.size();
-      for (auto i = 0 ; i < element_size; ++i){
+      for (auto i = 0; i < element_size; ++i) {
         psdd_content += " " + std::to_string(primes[i]->user_data());
         psdd_content += " " + std::to_string(subs[i]->user_data());
         psdd_content += " " + std::to_string(params[i].parameter());
@@ -488,9 +513,69 @@ void WritePsddToFile(PsddNode *root_node, const char *output_filename) {
   output_file.open(output_filename);
   output_file << psdd_content;
   output_file.close();
-  for (PsddNode* cur_node : serialized_psdds){
+  for (PsddNode *cur_node : serialized_psdds) {
     cur_node->SetUserData(0);
   }
+}
+std::unordered_map<uint32_t,
+                   std::pair<Probability, Probability>> GetMarginals(const std::vector<PsddNode *> &serialized_nodes) {
+  // first is false second is true
+  std::unordered_map<uint32_t, std::pair<Probability, Probability>> marginals;
+  std::vector<Probability> derivatives(serialized_nodes.size(), Probability::CreateFromDecimal(0));
+  auto index = 0;
+  for (PsddNode *cur_node : serialized_nodes) {
+    cur_node->SetUserData((uintmax_t) index);
+    index++;
+  }
+  derivatives[0] = Probability::CreateFromDecimal(1);
+  for (PsddNode *cur_node : serialized_nodes) {
+    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+      auto cur_lit = cur_node->psdd_literal_node();
+      auto marginal_it = marginals.find(cur_lit->variable_index());
+      if (marginal_it == marginals.end()) {
+        marginals[cur_lit->variable_index()] =
+            std::make_pair(PsddParameter::CreateFromDecimal(0), PsddParameter::CreateFromDecimal(0));
+        marginal_it = marginals.find(cur_lit->variable_index());
+      }
+      if (cur_lit->sign()) {
+        marginal_it->second.second = marginal_it->second.second + derivatives[cur_lit->user_data()];
+      } else {
+        marginal_it->second.first = marginal_it->second.first + derivatives[cur_lit->user_data()];
+      }
+    } else if (cur_node->node_type() == TOP_NODE_TYPE) {
+      auto cur_top = cur_node->psdd_top_node();
+      auto marginal_it = marginals.find(cur_top->variable_index());
+      if (marginal_it == marginals.end()) {
+        marginals[cur_top->variable_index()] =
+            std::make_pair(PsddParameter::CreateFromDecimal(0), PsddParameter::CreateFromDecimal(0));
+        marginal_it = marginals.find(cur_top->variable_index());
+      }
+      marginal_it->second.first =
+          marginal_it->second.first + derivatives[cur_top->user_data()] * cur_top->false_parameter();
+      marginal_it->second.second =
+          marginal_it->second.second + derivatives[cur_top->user_data()] * cur_top->true_parameter();
+    } else {
+      auto cur_decn_node = cur_node->psdd_decision_node();
+      const auto &primes = cur_decn_node->primes();
+      const auto &subs = cur_decn_node->subs();
+      const auto &params = cur_decn_node->parameters();
+      Probability cur_derivative = derivatives[cur_decn_node->user_data()];
+      auto element_size = primes.size();
+      for (auto i = 0; i < element_size; ++i) {
+        derivatives[primes[i]->user_data()] = derivatives[primes[i]->user_data()] + cur_derivative * params[i];
+        derivatives[subs[i]->user_data()] = derivatives[subs[i]->user_data()] + cur_derivative * params[i];
+      }
+    }
+  }
+  for (PsddNode *cur_node : serialized_nodes) {
+    cur_node->SetUserData(0);
+  }
+  for (auto &cur_marginal : marginals) {
+    Probability partition = cur_marginal.second.first + cur_marginal.second.second;
+    cur_marginal.second.first = cur_marginal.second.first / partition;
+    cur_marginal.second.second = cur_marginal.second.second / partition;
+  }
+  return marginals;
 }
 }
 

@@ -7,17 +7,21 @@
 
 #include <vector>
 #include "psdd_node.h"
+#include "psdd_manager.h"
 class CNF {
  public:
   CNF() = default;
   explicit CNF(const char *filename);
-  explicit CNF(const std::vector<std::vector<int>> &clauses);
-  const std::vector<std::vector<int>> &clauses() const;
+  explicit CNF(const std::vector<std::vector<SddLiteral>> &clauses);
+  const std::vector<std::vector<SddLiteral>> &clauses() const;
+  /*
   PsddNode *CompileToSddWithEvidence(const std::unordered_map<uint32_t, bool> &evid, Vtree *vtree) const;
   bool CheckConstraintWithPartialInstantiation(const std::bitset<MAX_VAR> &variable_mask,
                                                const std::bitset<MAX_VAR> &variable_instantiation) const;
+  */
+  PsddNode* Compile(PsddManager* psdd_manager, uintmax_t flag_index) const;
  private:
-  std::vector<std::vector<int>> clauses_;
+  std::vector<std::vector<SddLiteral>> clauses_;
 };
 
 #endif //STRUCTURED_BAYESIAN_NETWORK_CNF_H

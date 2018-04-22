@@ -37,6 +37,7 @@ class PsddManager {
   // arguments assumed to conformed to the same vtree as the one used by this manager.
   std::pair<PsddNode *, PsddParameter> Multiply(PsddNode *arg1, PsddNode *arg2, uintmax_t flag_index);
   Vtree *vtree() const;
+  PsddNode* ReadPsddFile(const char* psdd_filename, uintmax_t flag_index);
  private:
   PsddManager(Vtree *vtree, PsddUniqueTable *unique_table);
   PsddNode *GetTrueNode(Vtree *target_vtree_node,
