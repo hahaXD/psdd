@@ -10,8 +10,8 @@
 #include <bitset>
 #include <unordered_map>
 
-//#define  MAX_VAR 65536
-#define MAX_VAR 16384
+#define  MAX_VAR 65536
+//#define MAX_VAR 16384
 
 class BinaryData {
  public:
