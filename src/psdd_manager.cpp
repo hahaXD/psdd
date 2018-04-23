@@ -264,6 +264,7 @@ PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node,
       std::vector<PsddNode *> subs;
       SddNode **elements = sdd_node_elements(cur_node);
       SddSize element_size = sdd_node_size(cur_node);
+      std::vector<PsddParameter> parameters(element_size, PsddParameter::CreateFromDecimal(1));
       for (auto j = 0; j < element_size; j++) {
         SddNode *cur_prime = elements[2 * j];
         SddNode *cur_sub = elements[2 * j + 1];
@@ -299,7 +300,7 @@ PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node,
         }
       }
       assert(!primes.empty());
-      PsddNode *new_decn_node = new PsddDecisionNode(node_index_, new_vtree_node, flag_index, primes, subs, {});
+      PsddNode *new_decn_node = new PsddDecisionNode(node_index_, new_vtree_node, flag_index, primes, subs, parameters);
       new_decn_node = unique_table_->GetUniqueNode(new_decn_node, &node_index_);
       node_map[sdd_id(cur_node)] = new_decn_node;
     } else if (sdd_node_is_literal(cur_node)) {
