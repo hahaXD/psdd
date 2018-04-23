@@ -73,7 +73,7 @@ int main(int argc, const char *argv[]) {
     const char *cnf_filename = options[CNF_EVID].arg;
     cnf = new CNF(cnf_filename);
   }
-  Vtree *psdd_vtree = sdd_vtree_read(psdd_filename);
+  Vtree *psdd_vtree = sdd_vtree_read(vtree_filename);
   PsddManager *psdd_manager = PsddManager::GetPsddManagerFromVtree(psdd_vtree);
   sdd_vtree_free(psdd_vtree);
   PsddNode *result_node = psdd_manager->ReadPsddFile(psdd_filename, 0);

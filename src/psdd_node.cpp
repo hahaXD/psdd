@@ -102,7 +102,7 @@ Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables)
   set_vtree_properties(new_vtree_root);
   return new_vtree_root;
 }
-Vtree *vtree_util::CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &variable_map) {
+Vtree *CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &variable_map) {
   std::vector<Vtree *> orig_vtrees = SerializeVtree(root);
   auto orig_vtree_size = orig_vtrees.size();
   for (int64_t i = (int64_t) orig_vtree_size - 1; i >= 0; --i) {
