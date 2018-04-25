@@ -200,5 +200,7 @@ SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd
 void WritePsddToFile(PsddNode* root_node, const char* output_filename);
 
 std::unordered_map<uint32_t, std::pair<Probability, Probability>> GetMarginals(const std::vector<PsddNode*>& serialized_nodes);
+
+uintmax_t GetPsddSize(PsddNode* root_node);
 }
 #endif //STRUCTURED_BAYESIAN_NETWORK_PSDD_NODE_H

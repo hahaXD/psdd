@@ -577,6 +577,19 @@ std::unordered_map<uint32_t,
   }
   return marginals;
 }
+uintmax_t GetPsddSize(PsddNode *root_node) {
+  uintmax_t psdd_size = 0;
+  auto serialized_psdds = SerializePsddNodes(root_node);
+  for (PsddNode* cur_node : serialized_psdds){
+    if (cur_node->node_type() == DECISION_NODE_TYPE){
+      auto cur_decision_node = cur_node->psdd_decision_node();
+      psdd_size += cur_decision_node->primes().size()-1;
+    }else if (cur_node->node_type() == TOP_NODE_TYPE){
+      psdd_size += 1;
+    }
+  }
+  return psdd_size;
+}
 }
 
 PsddNode::PsddNode(uintmax_t node_index, Vtree *vtree_node) : PsddNode(node_index, vtree_node, 0) {}
