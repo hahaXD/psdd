@@ -82,6 +82,10 @@ int main(int argc, const char *argv[]) {
     auto new_node_result = psdd_manager->Multiply(evid, result_node, 0);
     result_node = new_node_result.first;
   }
+  if (result_node == nullptr){
+    std::cout << "UNSATISFIED" << std::endl;
+    exit(0);
+  }
   std::vector<SddLiteral> variables = vtree_util::VariablesUnderVtree(psdd_manager->vtree());
   auto serialized_psdd = psdd_node_util::SerializePsddNodes(result_node);
   if (options[MPE_QUERY]) {
