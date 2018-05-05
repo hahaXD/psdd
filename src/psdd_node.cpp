@@ -580,11 +580,11 @@ std::unordered_map<uint32_t,
 uintmax_t GetPsddSize(PsddNode *root_node) {
   uintmax_t psdd_size = 0;
   auto serialized_psdds = SerializePsddNodes(root_node);
-  for (PsddNode* cur_node : serialized_psdds){
-    if (cur_node->node_type() == DECISION_NODE_TYPE){
+  for (PsddNode *cur_node : serialized_psdds) {
+    if (cur_node->node_type() == DECISION_NODE_TYPE) {
       auto cur_decision_node = cur_node->psdd_decision_node();
-      psdd_size += cur_decision_node->primes().size()-1;
-    }else if (cur_node->node_type() == TOP_NODE_TYPE){
+      psdd_size += cur_decision_node->primes().size() - 1;
+    } else if (cur_node->node_type() == TOP_NODE_TYPE) {
       psdd_size += 1;
     }
   }
@@ -860,19 +860,6 @@ void PsddDecisionNode::ResetDataCount() {
   }
 }
 
-void PsddDecisionNode::SampleParameters(RandomDoubleGenerator *generator) {
-  auto element_size = primes_.size();
-  std::vector<PsddParameter> sampled_number(element_size);
-  PsddParameter sum = PsddParameter::CreateFromDecimal(0);
-  for (auto i = 0; i < element_size; ++i) {
-    double cur_num = generator->generate();
-    sampled_number[i] = PsddParameter::CreateFromDecimal(cur_num);
-    sum = sum + sampled_number[i];
-  }
-  for (auto i = 0; i < element_size; ++i) {
-    parameters_[i] = sampled_number[i] / sum;
-  }
-}
 void PsddDecisionNode::DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) {
   PsddParameter uniform_rand = PsddParameter::CreateFromDecimal(
       (generator->generate() - generator->min()) / (generator->max() - generator->min()));
@@ -971,15 +958,6 @@ PsddParameter PsddTopNode::false_parameter() const {
   return false_parameter_;
 }
 
-void PsddTopNode::SampleParameters(RandomDoubleGenerator *generator) {
-  double pos_num = generator->generate();
-  double neg_num = generator->generate();
-  double sum = pos_num + neg_num;
-  true_parameter_ = PsddParameter::CreateFromDecimal(pos_num / sum);
-  false_parameter_ = PsddParameter::CreateFromDecimal(neg_num / sum);
-  double sum_lg = (true_parameter_ + false_parameter_).parameter();
-  assert(std::abs(sum_lg) <= 0.0001);
-}
 void PsddTopNode::DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) {
   PsddParameter uniform_rand = PsddParameter::CreateFromDecimal(
       (generator->generate() - generator->min()) / (generator->max() - generator->min()));

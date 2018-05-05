@@ -14,7 +14,6 @@ extern "C" {
 #include "sddapi.h"
 };
 #include "psdd_parameter.h"
-#include "psdd_node.h"
 #include "binary_data.h"
 #include "random_double_generator.h"
 #include <gmpxx.h>
@@ -22,6 +21,7 @@ extern "C" {
 #define LITERAL_NODE_TYPE 1
 #define DECISION_NODE_TYPE 2
 #define TOP_NODE_TYPE 3
+
 class PsddTopNode;
 class PsddLiteralNode;
 class PsddDecisionNode;
@@ -49,7 +49,6 @@ class PsddNode {
   void ResetActivationFlag();
   virtual void ResetDataCount() = 0;
   virtual Probability CalculateLocalProbability() const;
-  virtual void SampleParameters(RandomDoubleGenerator *generator) {};
   virtual void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator)=0;
  protected:
   void set_hash_value(std::size_t hash_value);
@@ -117,7 +116,6 @@ class PsddDecisionNode : public PsddNode {
   void CalculateParametersUsingLaplacianSmoothing(PsddParameter alpha) override;
   Probability CalculateLocalProbability() const override;
   void ResetDataCount() override;
-  void SampleParameters(RandomDoubleGenerator *generator) override;
   void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) override;
   const std::vector<uintmax_t> &data_counts() const;
  private:
@@ -151,7 +149,6 @@ class PsddTopNode : public PsddNode {
   void CalculateParametersUsingLaplacianSmoothing(PsddParameter alpha) override;
   Probability CalculateLocalProbability() const override;
   void ResetDataCount() override;
-  void SampleParameters(RandomDoubleGenerator *generator) override;
   void DirectSample(std::bitset<MAX_VAR> *instantiation, RandomDoubleFromUniformGenerator *generator) override;
   uintmax_t true_data_count() const;
   uintmax_t false_data_count() const;
@@ -167,7 +164,7 @@ class PsddTopNode : public PsddNode {
 namespace vtree_util {
 std::vector<Vtree *> SerializeVtree(Vtree *root);
 Vtree *CopyVtree(Vtree *root);
-Vtree *CopyVtree(Vtree* root, const std::unordered_map<SddLiteral, SddLiteral>& variable_map);
+Vtree *CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &variable_map);
 std::vector<SddLiteral> VariablesUnderVtree(Vtree *root);
 Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables);
 }
@@ -197,10 +194,12 @@ SddNode *ConvertPsddNodeToSddNode(const std::vector<PsddNode *> &serialized_psdd
                                   const std::unordered_map<SddLiteral, SddLiteral> &variable_map,
                                   SddManager *sdd_manager);
 
-void WritePsddToFile(PsddNode* root_node, const char* output_filename);
+void WritePsddToFile(PsddNode *root_node, const char *output_filename);
 
-std::unordered_map<uint32_t, std::pair<Probability, Probability>> GetMarginals(const std::vector<PsddNode*>& serialized_nodes);
+std::unordered_map<uint32_t,
+                   std::pair<Probability, Probability>> GetMarginals(const std::vector<PsddNode *> &serialized_nodes);
 
-uintmax_t GetPsddSize(PsddNode* root_node);
+uintmax_t GetPsddSize(PsddNode *root_node);
+
 }
 #endif //STRUCTURED_BAYESIAN_NETWORK_PSDD_NODE_H

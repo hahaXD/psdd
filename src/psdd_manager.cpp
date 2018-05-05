@@ -525,7 +525,7 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename, uintmax_t flag_in
     exit(1); // terminate with error
   }
   std::string line;
-  PsddNode* root_node = nullptr;
+  PsddNode *root_node = nullptr;
   while (std::getline(psdd_file, line)) {
     if (line[0] == 'c') {
       continue;
@@ -563,8 +563,8 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename, uintmax_t flag_in
       int vtree_index;
       uintmax_t element_size;
       iss >> node_index >> vtree_index >> element_size;
-      std::vector<PsddNode*> primes;
-      std::vector<PsddNode*> subs;
+      std::vector<PsddNode *> primes;
+      std::vector<PsddNode *> subs;
       std::vector<PsddParameter> params;
       for (auto j = 0; j < element_size; j++) {
         uintmax_t prime_index;
@@ -579,12 +579,72 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename, uintmax_t flag_in
         subs.push_back(sub_node);
         params.push_back(PsddParameter::CreateFromLog(weight_in_log));
       }
-      PsddNode* cur_node = GetConformedPsddDecisionNode(primes, subs, params, flag_index);
+      PsddNode *cur_node = GetConformedPsddDecisionNode(primes, subs, params, flag_index);
       construct_cache[node_index] = cur_node;
       root_node = cur_node;
     }
   }
   psdd_file.close();
   return root_node;
+}
+std::vector<PsddNode *> PsddManager::SampleParametersForMultiplePsdds(RandomDoubleGenerator *generator,
+                                                                      const std::vector<PsddNode *> &root_psdd_nodes,
+                                                                      uintmax_t flag_index) {
+  std::vector<PsddNode *> serialized_psdd_nodes = psdd_node_util::SerializePsddNodes(root_psdd_nodes);
+  for (auto node_it = serialized_psdd_nodes.rbegin(); node_it != serialized_psdd_nodes.rend(); ++node_it) {
+    PsddNode *cur_node = *node_it;
+    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+      PsddNode *new_node = GetPsddLiteralNode(cur_node->psdd_literal_node()->literal(), flag_index);
+      cur_node->SetUserData((uintmax_t) new_node);
+    } else if (cur_node->node_type() == TOP_NODE_TYPE) {
+      double pos_num = generator->generate();
+      double neg_num = generator->generate();
+      double sum = pos_num + neg_num;
+      auto true_parameter = PsddParameter::CreateFromDecimal(pos_num / sum);
+      auto false_parameter = PsddParameter::CreateFromDecimal(neg_num / sum);
+      double sum_lg = (true_parameter + false_parameter).parameter();
+      assert(std::abs(sum_lg) <= 0.0001);
+      PsddNode *new_node =
+          GetPsddTopNode(cur_node->psdd_top_node()->variable_index(), flag_index, true_parameter, false_parameter);
+      cur_node->SetUserData((uintmax_t) new_node);
+    } else {
+      assert(cur_node->node_type() == DECISION_NODE_TYPE);
+      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+      const auto &primes = cur_decn_node->primes();
+      const auto &subs = cur_decn_node->subs();
+      auto element_size = primes.size();
+      std::vector<PsddNode *> next_primes(element_size, nullptr);
+      std::vector<PsddNode *> next_subs(element_size, nullptr);
+      std::vector<PsddParameter> sampled_number(element_size);
+      PsddParameter sum = PsddParameter::CreateFromDecimal(0);
+      for (auto i = 0; i < element_size; ++i) {
+        double cur_num = generator->generate();
+        sampled_number[i] = PsddParameter::CreateFromDecimal(cur_num);
+        sum = sum + sampled_number[i];
+        next_primes[i] = (PsddNode *) primes[i]->user_data();
+        next_subs[i] = (PsddNode *) subs[i]->user_data();
+      }
+      std::vector<PsddParameter> next_parameters(element_size);
+      for (auto i = 0; i < element_size; ++i) {
+        next_parameters[i] = sampled_number[i] / sum;
+      }
+      PsddNode *new_node = GetConformedPsddDecisionNode(next_primes, next_subs, next_parameters, flag_index);
+      cur_node->SetUserData((uintmax_t) new_node);
+    }
+  }
+  auto root_psdd_nodes_size = root_psdd_nodes.size();
+  std::vector<PsddNode *> new_root_nodes(root_psdd_nodes_size, nullptr);
+  for (auto i = 0; i < root_psdd_nodes_size; ++i) {
+    new_root_nodes[i] = (PsddNode *) root_psdd_nodes[i]->user_data();
+  }
+  for (PsddNode *cur_node : serialized_psdd_nodes) {
+    cur_node->SetUserData(0);
+  }
+  return new_root_nodes;
+}
+PsddNode *PsddManager::SampleParameters(RandomDoubleGenerator *generator,
+                                        PsddNode *target_root_node,
+                                        uintmax_t flag_index) {
+  return SampleParametersForMultiplePsdds(generator, {target_root_node}, flag_index)[0];
 }
 
