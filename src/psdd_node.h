@@ -17,6 +17,7 @@ extern "C" {
 #include "binary_data.h"
 #include "random_double_generator.h"
 #include <gmpxx.h>
+#include <unordered_set>
 
 #define LITERAL_NODE_TYPE 1
 #define DECISION_NODE_TYPE 2
@@ -167,6 +168,7 @@ Vtree *CopyVtree(Vtree *root);
 Vtree *CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &variable_map);
 std::vector<SddLiteral> VariablesUnderVtree(Vtree *root);
 Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables);
+Vtree *SubVtreeByVariables(Vtree* root, const std::unordered_set<SddLiteral>& variables);
 }
 
 namespace psdd_node_util {

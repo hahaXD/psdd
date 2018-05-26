@@ -15,6 +15,34 @@
 #include <gmp.h>
 #include <fstream>
 
+namespace {
+Vtree *SubVtreeByVariablesHelper(Vtree *root, const std::unordered_set<SddLiteral> &variables) {
+  if (sdd_vtree_is_leaf(root)) {
+    SddLiteral vtree_var = sdd_vtree_var(root);
+    auto vtree_var_it = variables.find(vtree_var);
+    if (vtree_var_it != variables.end()) {
+      return root;
+    } else {
+      return nullptr;
+    }
+  } else {
+    Vtree* left_child_result = SubVtreeByVariablesHelper(sdd_vtree_left(root), variables);
+    Vtree* right_child_result = SubVtreeByVariablesHelper(sdd_vtree_right(root), variables);
+    if (left_child_result == nullptr){
+      return right_child_result;
+    }else if(right_child_result == nullptr){
+        return left_child_result;
+    }else{
+      if (left_child_result == sdd_vtree_left(root) && right_child_result == sdd_vtree_right(root)){
+        return root;
+      }else{
+        return nullptr; // error. variables does not form a sub vtree.
+      }
+    }
+  }
+}
+}
+
 namespace vtree_util {
 std::vector<Vtree *> SerializeVtree(Vtree *root) {
   std::vector<Vtree *> serialized_vtree;
@@ -124,6 +152,19 @@ Vtree *CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &
   sdd_vtree_set_data(nullptr, root);
   set_vtree_properties(new_vtree);
   return new_vtree;
+}
+
+Vtree *SubVtreeByVariables(Vtree *root, const std::unordered_set<SddLiteral> &variables) {
+  Vtree* result_candidate = SubVtreeByVariablesHelper(root, variables);
+  if (result_candidate == nullptr){
+    return nullptr;
+  }
+  SddLiteral variable_size_under_candidate = sdd_vtree_var_count(result_candidate);
+  if (variable_size_under_candidate != variables.size()){
+    return nullptr ;
+  }else{
+    return result_candidate;
+  }
 }
 }
 namespace psdd_node_util {
