@@ -41,6 +41,15 @@ Vtree *SubVtreeByVariablesHelper(Vtree *root, const std::unordered_set<SddLitera
     }
   }
 }
+
+void LeftToRightLeafTraverseHelper(std::vector<SddLiteral>* literal_vector, Vtree* cur_root){
+  if (sdd_vtree_is_leaf(cur_root)){
+    literal_vector->push_back(sdd_vtree_var(cur_root));
+  }else{
+    LeftToRightLeafTraverseHelper(literal_vector, sdd_vtree_left(cur_root));
+    LeftToRightLeafTraverseHelper(literal_vector, sdd_vtree_right(cur_root));
+  }
+}
 }
 
 namespace vtree_util {
@@ -165,6 +174,11 @@ Vtree *SubVtreeByVariables(Vtree *root, const std::unordered_set<SddLiteral> &va
   }else{
     return result_candidate;
   }
+}
+std::vector<SddLiteral> LeftToRightLeafTraverse(Vtree *root) {
+  std::vector<SddLiteral> result;
+  LeftToRightLeafTraverseHelper(&result, root);
+  return result;
 }
 }
 namespace psdd_node_util {

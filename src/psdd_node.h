@@ -169,6 +169,7 @@ Vtree *CopyVtree(Vtree *root, const std::unordered_map<SddLiteral, SddLiteral> &
 std::vector<SddLiteral> VariablesUnderVtree(Vtree *root);
 Vtree *ProjectVtree(Vtree *orig_vtree, const std::vector<SddLiteral> &variables);
 Vtree *SubVtreeByVariables(Vtree* root, const std::unordered_set<SddLiteral>& variables);
+std::vector<SddLiteral> LeftToRightLeafTraverse(Vtree* root);
 }
 
 namespace psdd_node_util {
