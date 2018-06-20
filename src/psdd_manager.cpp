@@ -719,6 +719,11 @@ PsddNode *PsddManager::FromSdd(
     const std::unordered_set<SddLiteral> &used_psdd_variables) {
   Vtree *sub_psdd_vtree =
       vtree_util::SubVtreeByVariables(vtree_, used_psdd_variables);
+  return FromSdd(root_node, sdd_vtree, flag_index, sub_psdd_vtree);
+}
+
+PsddNode *PsddManager::FromSdd(SddNode *root_node, Vtree *sdd_vtree,
+                               uintmax_t flag_index, Vtree *sub_psdd_vtree) {
   if (sdd_node_is_false(root_node)) {
     // nullptr for PsddNode means false
     return nullptr;
@@ -747,7 +752,7 @@ PsddNode *PsddManager::FromSdd(
       SddSize element_size = sdd_node_size(cur_node);
       std::vector<PsddParameter> parameters(
           element_size, PsddParameter::CreateFromDecimal(1));
-      for (auto j = 0; j < element_size; j++) {
+      for (size_t j = 0; j < element_size; j++) {
         SddNode *cur_prime = elements[2 * j];
         SddNode *cur_sub = elements[2 * j + 1];
         auto node_map_it = node_map.find(sdd_id(cur_prime));

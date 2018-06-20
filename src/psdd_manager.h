@@ -25,6 +25,7 @@ public:
   // corresponding value is the PSDD literals
   PsddNode *FromSdd(SddNode *root_node, Vtree *sdd_vtree, uintmax_t flag_index,
                     const std::unordered_set<SddLiteral> &used_variables);
+  PsddNode* FromSdd(SddNode* root_node, Vtree* sdd_vtree, uintmax_t flag_index, Vtree* sub_psdd_vtree);
   PsddNode *GetTrueNode(Vtree *target_vtree_node, uintmax_t flag_index);
   PsddTopNode *GetPsddTopNode(uint32_t variable_index, uintmax_t flag_index,
                               const PsddParameter &positive_parameter,
