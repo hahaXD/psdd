@@ -6,8 +6,8 @@
 #define STRUCTURED_BAYESIAN_NETWORK_CNF_H
 
 #include <vector>
-#include "psdd_node.h"
-#include "psdd_manager.h"
+#include <psdd/psdd_node.h>
+#include <psdd/psdd_manager.h>
 class CNF {
  public:
   CNF() = default;

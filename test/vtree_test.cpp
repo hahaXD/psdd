@@ -5,9 +5,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <unordered_map>
-#include <psdd_manager.h>
+#include <psdd/psdd_manager.h>
 extern "C" {
-#include "sddapi.h"
+#include <sdd/sddapi.h>
 }
 
 TEST(VTREE_TEST, VTREE_PROJECTION_TEST) {

@@ -4,12 +4,12 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <psdd_node.h>
+#include <psdd/psdd_node.h>
 #include <vector>
 #include <stack>
-#include <psdd_unique_table.h>
+#include <psdd/psdd_unique_table.h>
 extern "C" {
-#include "sddapi.h"
+#include <sdd/sddapi.h>
 }
 
 namespace {

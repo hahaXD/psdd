@@ -4,10 +4,10 @@
 
 #ifndef PSDD_PSDD_MANAGER_H
 #define PSDD_PSDD_MANAGER_H
-#include "psdd_node.h"
-#include "psdd_unique_table.h"
+#include <psdd/psdd_node.h>
+#include <psdd/psdd_unique_table.h>
 extern "C" {
-#include <sddapi.h>
+#include <sdd/sddapi.h>
 };
 
 class PsddManager {

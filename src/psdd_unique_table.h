@@ -6,10 +6,10 @@
 #define STRUCTURED_BAYESIAN_NETWORK_PSDD_UNIQUE_TABLE_H
 #include <vector>
 #include <unordered_set>
-#include "psdd_node.h"
 extern "C" {
-#include "sddapi.h"
+#include <sdd/sddapi.h>
 };
+class PsddNode;
 
 class PsddUniqueTable {
  public:

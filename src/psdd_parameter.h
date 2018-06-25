@@ -6,6 +6,7 @@
 #define PSDD_PSDD_PARAMETER_HPP
 
 #include <cstdint>
+#include <cstddef>
 
 class PsddParameter {
  public:

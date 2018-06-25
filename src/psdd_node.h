@@ -11,11 +11,11 @@
 #include <unordered_map>
 #include <random>
 extern "C" {
-#include "sddapi.h"
+#include <sdd/sddapi.h>
 };
-#include "psdd_parameter.h"
-#include "binary_data.h"
-#include "random_double_generator.h"
+#include <psdd/psdd_parameter.h>
+#include <psdd/binary_data.h>
+#include <psdd/random_double_generator.h>
 #include <gmpxx.h>
 #include <unordered_set>
 

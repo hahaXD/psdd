@@ -1,12 +1,12 @@
 //
 // Created by Yujia Shen on 4/5/18.
 //
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <psdd_manager.h>
+#include <gmock/gmock.h>
+#include <psdd/psdd_manager.h>
 #include <unordered_map>
 extern "C" {
-#include "sddapi.h"
+#include <sdd/sddapi.h>
 }
 
 namespace {

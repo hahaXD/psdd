@@ -7,7 +7,7 @@
 #include <iostream>
 #include "csvparser.h"
 #include "binary_data.h"
-#include <json.hpp>
+#include <nlohmann/json.hpp>
 
 using nlohmann::json;
 

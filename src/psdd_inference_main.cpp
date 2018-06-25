@@ -3,7 +3,7 @@
 //
 #include "cnf.h"
 extern "C" {
-#include <sddapi.h>
+#include <sdd/sddapi.h>
 }
 #include "optionparser.h"
 #include <iostream>

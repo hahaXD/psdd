@@ -2,7 +2,7 @@
 // Created by Yujia Shen on 10/19/17.
 //
 
-#include "psdd_node.h"
+#include <psdd/psdd_node.h>
 #include <algorithm>
 #include <functional>
 #include <cassert>
