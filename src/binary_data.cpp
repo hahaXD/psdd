@@ -1,13 +1,13 @@
 //
 // Created by Yujia Shen on 10/29/17.
 //
+#include <assert.h>
 #include <cmath>
 #include <fstream>
-#include <assert.h>
 #include <iostream>
-#include "csvparser.h"
-#include "binary_data.h"
 #include <nlohmann/json.hpp>
+#include <psdd/binary_data.h>
+#include <psdd/csvparser.h>
 
 using nlohmann::json;
 
@@ -27,7 +27,7 @@ void BinaryData::ReadFile(const char *data_file) {
     for (int i = 0; i < CsvParser_getNumFields(row); i++) {
       auto cur_item = atoi(rowFields[i]);
       if (cur_item) {
-        cur_data.set((size_t) (i + 1));
+        cur_data.set((size_t)(i + 1));
       }
     }
     if (data_.find(cur_data) != data_.end()) {
@@ -37,9 +37,9 @@ void BinaryData::ReadFile(const char *data_file) {
     }
     data_size_ += 1;
     if (variable_size_ == 0) {
-      variable_size_ = (uint32_t) CsvParser_getNumFields(row);
+      variable_size_ = (uint32_t)CsvParser_getNumFields(row);
     } else {
-      assert(variable_size_ == (uint32_t) CsvParser_getNumFields(row));
+      assert(variable_size_ == (uint32_t)CsvParser_getNumFields(row));
     }
     CsvParser_destroy_row(row);
   }
@@ -62,13 +62,9 @@ void BinaryData::WriteFile(const char *data_file) {
   data_fd.close();
 }
 
-uintmax_t BinaryData::data_size() const {
-  return data_size_;
-}
+uintmax_t BinaryData::data_size() const { return data_size_; }
 
-uint32_t BinaryData::variable_size() const {
-  return variable_size_;
-}
+uint32_t BinaryData::variable_size() const { return variable_size_; }
 
 void BinaryData::AddRecord(const std::bitset<MAX_VAR> &dat) {
   if (data_.find(dat) != data_.end()) {
@@ -83,7 +79,8 @@ void BinaryData::set_variable_size(uint32_t var_size) {
   variable_size_ = var_size;
 }
 
-const std::unordered_map<std::bitset<MAX_VAR>, uintmax_t> &BinaryData::data() const {
+const std::unordered_map<std::bitset<MAX_VAR>, uintmax_t> &
+BinaryData::data() const {
   return data_;
 }
 
@@ -101,7 +98,8 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
   json data_input_json;
   data_input_stream >> data_input_json;
   if (data_input_json.find("variable_size") == data_input_json.end()) {
-    std::cerr << "Cannot find \"variable_size\" field in json input " << std::endl;
+    std::cerr << "Cannot find \"variable_size\" field in json input "
+              << std::endl;
     return nullptr;
   }
   auto variable_size = data_input_json["variable_size"];
@@ -114,19 +112,21 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
     std::cerr << "data is not an array in the json input" << std::endl;
   }
   auto new_dataset = new BinaryData();
-  new_dataset->set_variable_size((uint32_t) variable_size);
+  new_dataset->set_variable_size((uint32_t)variable_size);
   size_t iteration_index = 0;
   for (auto it = data.begin(); it != data.end(); ++it) {
     const auto &cur_example = *it;
     if (!cur_example.is_array()) {
-      std::cerr << "The " << iteration_index << "example from the json input does not form a valid example. Skipped."
+      std::cerr << "The " << iteration_index
+                << "example from the json input does not form a valid example. "
+                   "Skipped."
                 << std::endl;
       continue;
     }
     std::bitset<MAX_VAR> cur_example_bitset;
     bool legal_data = true;
-    for (auto positive_variable_it = cur_example.begin(); positive_variable_it != cur_example.end();
-         ++positive_variable_it) {
+    for (auto positive_variable_it = cur_example.begin();
+         positive_variable_it != cur_example.end(); ++positive_variable_it) {
       const auto &cur_variable = *positive_variable_it;
       if (cur_variable.is_number()) {
         if (cur_variable <= variable_size) {
@@ -141,7 +141,9 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
       }
     }
     if (!legal_data) {
-      std::cerr << "The " << iteration_index << "example from the json input does not form a valid example. Skipped."
+      std::cerr << "The " << iteration_index
+                << "example from the json input does not form a valid example. "
+                   "Skipped."
                 << std::endl;
       continue;
     }
@@ -151,5 +153,3 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
   data_input_stream.close();
   return new_dataset;
 }
-
-

@@ -4,6 +4,7 @@
 
 #ifndef PSDD_PSDD_MANAGER_H
 #define PSDD_PSDD_MANAGER_H
+#include <boost/dynamic_bitset.hpp>
 #include <psdd/psdd_node.h>
 #include <psdd/psdd_unique_table.h>
 extern "C" {
@@ -18,14 +19,14 @@ public:
   static PsddManager *GetPsddManagerFromVtree(Vtree *psdd_vtree);
   ~PsddManager();
   void DeleteUnusedPsddNodes(const std::vector<PsddNode *> &used_nodes);
-  PsddNode *ConvertSddToPsdd(
-      SddNode *root_node, Vtree *sdd_vtree, uintmax_t flag_index,
-      const std::unordered_map<uint32_t, uint32_t> &variable_mapping);
+  PsddNode *ConvertSddToPsdd(SddNode *root_node, Vtree *sdd_vtree,
+                             uintmax_t flag_index);
   // variable_mapping : key is the sdd literal in the root_node, and the
   // corresponding value is the PSDD literals
   PsddNode *FromSdd(SddNode *root_node, Vtree *sdd_vtree, uintmax_t flag_index,
                     const std::unordered_set<SddLiteral> &used_variables);
-  PsddNode* FromSdd(SddNode* root_node, Vtree* sdd_vtree, uintmax_t flag_index, Vtree* sub_psdd_vtree);
+  PsddNode *FromSdd(SddNode *root_node, Vtree *sdd_vtree, uintmax_t flag_index,
+                    Vtree *sub_psdd_vtree);
   PsddNode *GetTrueNode(Vtree *target_vtree_node, uintmax_t flag_index);
   PsddTopNode *GetPsddTopNode(uint32_t variable_index, uintmax_t flag_index,
                               const PsddParameter &positive_parameter,
@@ -53,6 +54,10 @@ public:
       const std::vector<PsddNode *> &root_psdd_nodes, uintmax_t flag_index);
   PsddNode *SampleParameters(RandomDoubleGenerator *generator,
                              PsddNode *target_root_node, uintmax_t flag_index);
+  PsddNode *LearnPsddParameters(
+      PsddNode *target_structure,
+      const std::unordered_map<int32_t, BatchedPsddValue> &examples,
+      size_t data_size, PsddParameter alpha, uintmax_t flag_index);
 
 private:
   PsddManager(Vtree *vtree, PsddUniqueTable *unique_table);

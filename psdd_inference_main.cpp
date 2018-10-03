@@ -1,17 +1,18 @@
 //
 // Created by Jason Shen on 4/22/18.
 //
-#include "cnf.h"
+
+#include <iostream>
+#include <psdd/cnf.h>
+#include <psdd/optionparser.h>
 extern "C" {
 #include <sdd/sddapi.h>
 }
-#include "optionparser.h"
-#include <iostream>
-
 struct Arg : public option::Arg {
-  static void printError(const char *msg1, const option::Option &opt, const char *msg2) {
+  static void printError(const char *msg1, const option::Option &opt,
+                         const char *msg2) {
     fprintf(stderr, "%s", msg1);
-    fwrite(opt.name, (size_t) opt.namelen, 1, stderr);
+    fwrite(opt.name, (size_t)opt.namelen, 1, stderr);
     fprintf(stderr, "%s", msg2);
   }
 
@@ -19,39 +20,37 @@ struct Arg : public option::Arg {
     if (option.arg != 0)
       return option::ARG_OK;
 
-    if (msg) printError("Option '", option, "' requires an argument\n");
+    if (msg)
+      printError("Option '", option, "' requires an argument\n");
     return option::ARG_ILLEGAL;
   }
 
   static option::ArgStatus Numeric(const option::Option &option, bool msg) {
     char *endptr = 0;
-    if (option.arg != 0 && strtol(option.arg, &endptr, 10)) {};
+    if (option.arg != 0 && strtol(option.arg, &endptr, 10)) {
+    };
     if (endptr != option.arg && *endptr == 0)
       return option::ARG_OK;
 
-    if (msg) printError("Option '", option, "' requires a numeric argument\n");
+    if (msg)
+      printError("Option '", option, "' requires a numeric argument\n");
     return option::ARG_ILLEGAL;
   }
 };
-enum optionIndex {
-  UNKNOWN,
-  HELP,
-  MPE_QUERY,
-  MAR_QUERY,
-  CNF_EVID
-};
+enum optionIndex { UNKNOWN, HELP, MPE_QUERY, MAR_QUERY, CNF_EVID };
 
-const option::Descriptor usage[] =
-    {
-        {UNKNOWN, 0, "", "", option::Arg::None, "USAGE: example [options]\n\n \tOptions:"},
-        {HELP, 0, "h", "help", option::Arg::None, "--help  \tPrint usage and exit."},
-        {MPE_QUERY, 0, "", "mpe_query", option::Arg::None, ""},
-        {MAR_QUERY, 0, "", "mar_query", option::Arg::None, ""},
-        {CNF_EVID, 0, "", "cnf_evid", Arg::Required, "--cnf_evid  evid file, represented using CNF."},
-        {UNKNOWN, 0, "", "", option::Arg::None,
-         "\nExamples:\n./psdd_inference  psdd_filename vtree_filename \n"},
-        {0, 0, 0, 0, 0, 0}
-    };
+const option::Descriptor usage[] = {
+    {UNKNOWN, 0, "", "", option::Arg::None,
+     "USAGE: example [options]\n\n \tOptions:"},
+    {HELP, 0, "h", "help", option::Arg::None,
+     "--help  \tPrint usage and exit."},
+    {MPE_QUERY, 0, "", "mpe_query", option::Arg::None, ""},
+    {MAR_QUERY, 0, "", "mar_query", option::Arg::None, ""},
+    {CNF_EVID, 0, "", "cnf_evid", Arg::Required,
+     "--cnf_evid  evid file, represented using CNF."},
+    {UNKNOWN, 0, "", "", option::Arg::None,
+     "\nExamples:\n./psdd_inference  psdd_filename vtree_filename \n"},
+    {0, 0, 0, 0, 0, 0}};
 
 int main(int argc, const char *argv[]) {
   argc -= (argc > 0);
@@ -82,17 +81,19 @@ int main(int argc, const char *argv[]) {
     auto new_node_result = psdd_manager->Multiply(evid, result_node, 0);
     result_node = new_node_result.first;
   }
-  if (result_node == nullptr){
+  if (result_node == nullptr) {
     std::cout << "UNSATISFIED" << std::endl;
     exit(0);
   }
-  std::vector<SddLiteral> variables = vtree_util::VariablesUnderVtree(psdd_manager->vtree());
+  std::vector<SddLiteral> variables =
+      vtree_util::VariablesUnderVtree(psdd_manager->vtree());
   auto serialized_psdd = psdd_node_util::SerializePsddNodes(result_node);
   if (options[MPE_QUERY]) {
     auto mpe_result = psdd_node_util::GetMPESolution(serialized_psdd);
     std::cout << "MPE result=";
     for (SddLiteral variable_index : variables) {
-      std::cout << variable_index << ":" << mpe_result.first[variable_index] << ",";
+      std::cout << variable_index << ":" << mpe_result.first[variable_index]
+                << ",";
     }
     std::cout << std::endl;
   }
@@ -100,7 +101,8 @@ int main(int argc, const char *argv[]) {
     auto mar_result = psdd_node_util::GetMarginals(serialized_psdd);
     std::cout << "MAR result=";
     for (auto result_pair : mar_result) {
-      std::cout << result_pair.first << ":" << result_pair.second.first.parameter() << "|"
+      std::cout << result_pair.first << ":"
+                << result_pair.second.first.parameter() << "|"
                 << result_pair.second.second.parameter() << ",";
     }
     std::cout << std::endl;

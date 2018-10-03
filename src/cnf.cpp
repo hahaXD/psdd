@@ -2,11 +2,11 @@
 // Created by jason on 2/28/18.
 //
 
-#include "cnf.h"
-#include "psdd_unique_table.h"
 #include <cassert>
 #include <cmath>
 #include <fstream>
+#include <psdd/cnf.h>
+#include <psdd/psdd_unique_table.h>
 #include <queue>
 #include <sstream>
 #include <stack>
@@ -167,9 +167,8 @@ PsddNode *CNF::Compile(PsddManager *psdd_manager, uintmax_t flag_index) const {
   sdd_manager_auto_gc_and_minimize_off(new_sdd_manager);
   SddNode *result = ConstructSddFromCnf(clauses_, psdd_variable_to_sdd_variable,
                                         new_sdd_manager);
-  PsddNode *psdd_result =
-      psdd_manager->ConvertSddToPsdd(result, sdd_manager_vtree(new_sdd_manager),
-                                     flag_index, sdd_variable_to_psdd_variable);
+  PsddNode *psdd_result = psdd_manager->ConvertSddToPsdd(
+      result, sdd_manager_vtree(new_sdd_manager), flag_index);
   sdd_manager_free(new_sdd_manager);
   return psdd_result;
 }

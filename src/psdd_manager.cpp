@@ -2,12 +2,12 @@
 // Created by Yujia Shen on 3/20/18.
 //
 
-#include "psdd_manager.h"
-#include "psdd_unique_table.h"
 #include <cassert>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <psdd/psdd_manager.h>
+#include <psdd/psdd_unique_table.h>
 #include <queue>
 #include <sstream>
 #include <stack>
@@ -44,7 +44,7 @@ public:
   std::pair<PsddNode *, Probability>
   Lookup(PsddNode *first_node, PsddNode *second_node, bool *found) const {
     auto vtree_index = sdd_vtree_position(first_node->vtree_node());
-    assert(cache_.size() > vtree_index);
+    assert(cache_.size() > static_cast<size_t>(vtree_index));
     const auto &cache_at_vtree = cache_[vtree_index];
     auto node_pair = std::pair<PsddNode *, PsddNode *>(first_node, second_node);
     auto lookup_it = cache_at_vtree.find(node_pair);
@@ -59,7 +59,7 @@ public:
   void Update(PsddNode *first, PsddNode *second,
               const std::pair<PsddNode *, Probability> &result) {
     auto vtree_index = sdd_vtree_position(first->vtree_node());
-    assert(cache_.size() > vtree_index);
+    assert(cache_.size() > static_cast<size_t>(vtree_index));
     std::pair<PsddNode *, PsddNode *> node_pair(first, second);
     cache_[vtree_index][node_pair] = result;
   }
@@ -96,11 +96,11 @@ MultiplyWithCache(PsddNode *first, PsddNode *second, PsddManager *manager,
     std::vector<PsddNode *> next_subs;
     std::vector<PsddParameter> next_parameters;
     PsddParameter partition = PsddParameter::CreateFromDecimal(0);
-    for (auto i = 0; i < first_element_size; ++i) {
+    for (size_t i = 0; i < first_element_size; ++i) {
       PsddNode *cur_first_prime = first_primes[i];
       PsddNode *cur_first_sub = first_subs[i];
       PsddParameter cur_first_param = first_parameters[i];
-      for (auto j = 0; j < second_element_size; ++j) {
+      for (size_t j = 0; j < second_element_size; ++j) {
         PsddNode *cur_second_prime = second_primes[j];
         auto cur_prime_result = MultiplyWithCache(
             cur_first_prime, cur_second_prime, manager, flag_index, cache);
@@ -279,9 +279,8 @@ void PsddManager::DeleteUnusedPsddNodes(
   unique_table_->DeleteUnusedPsddNodes(used_nodes);
 }
 
-PsddNode *PsddManager::ConvertSddToPsdd(
-    SddNode *root_node, Vtree *sdd_vtree, uintmax_t flag_index,
-    const std::unordered_map<uint32_t, uint32_t> &variable_mapping) {
+PsddNode *PsddManager::ConvertSddToPsdd(SddNode *root_node, Vtree *sdd_vtree,
+                                        uintmax_t flag_index) {
   if (sdd_node_is_false(root_node)) {
     // nullptr for PsddNode means false
     return nullptr;
@@ -298,7 +297,7 @@ PsddNode *PsddManager::ConvertSddToPsdd(
   SddSize node_size = 0;
   SddNode **serialized_sdd_nodes = sdd_topological_sort(root_node, &node_size);
   std::unordered_map<SddSize, PsddNode *> node_map;
-  for (auto i = 0; i < node_size; ++i) {
+  for (size_t i = 0; i < node_size; ++i) {
     SddNode *cur_node = serialized_sdd_nodes[i];
     if (sdd_node_is_decision(cur_node)) {
       Vtree *old_vtree_node = sdd_vtree_of(cur_node);
@@ -309,7 +308,7 @@ PsddNode *PsddManager::ConvertSddToPsdd(
       SddSize element_size = sdd_node_size(cur_node);
       std::vector<PsddParameter> parameters(
           element_size, PsddParameter::CreateFromDecimal(1));
-      for (auto j = 0; j < element_size; j++) {
+      for (size_t j = 0; j < element_size; j++) {
         SddNode *cur_prime = elements[2 * j];
         SddNode *cur_sub = elements[2 * j + 1];
         auto node_map_it = node_map.find(sdd_id(cur_prime));
@@ -497,7 +496,7 @@ PsddDecisionNode *PsddManager::GetConformedPsddDecisionNode(
   auto element_size = primes.size();
   std::vector<PsddNode *> conformed_primes;
   std::vector<PsddNode *> conformed_subs;
-  for (auto i = 0; i < element_size; ++i) {
+  for (size_t i = 0; i < element_size; ++i) {
     PsddNode *cur_prime = primes[i];
     PsddNode *cur_sub = subs[i];
     PsddNode *cur_conformed_prime =
@@ -542,7 +541,7 @@ PsddNode *PsddManager::LoadPsddNode(Vtree *target_vtree,
       const auto &cur_parameters = cur_decision_node->parameters();
       std::vector<PsddNode *> new_primes(cur_primes.size(), nullptr);
       std::vector<PsddNode *> new_subs(cur_subs.size(), nullptr);
-      for (auto i = 0; i < cur_primes.size(); ++i) {
+      for (size_t i = 0; i < cur_primes.size(); ++i) {
         new_primes[i] = (PsddNode *)cur_primes[i]->user_data();
         new_subs[i] = (PsddNode *)cur_subs[i]->user_data();
       }
@@ -625,7 +624,7 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename,
       std::vector<PsddNode *> primes;
       std::vector<PsddNode *> subs;
       std::vector<PsddParameter> params;
-      for (auto j = 0; j < element_size; j++) {
+      for (size_t j = 0; j < element_size; j++) {
         uintmax_t prime_index;
         uintmax_t sub_index;
         double weight_in_log;
@@ -681,7 +680,7 @@ std::vector<PsddNode *> PsddManager::SampleParametersForMultiplePsdds(
       std::vector<PsddNode *> next_subs(element_size, nullptr);
       std::vector<PsddParameter> sampled_number(element_size);
       PsddParameter sum = PsddParameter::CreateFromDecimal(0);
-      for (auto i = 0; i < element_size; ++i) {
+      for (size_t i = 0; i < element_size; ++i) {
         double cur_num = generator->generate();
         sampled_number[i] = PsddParameter::CreateFromDecimal(cur_num);
         sum = sum + sampled_number[i];
@@ -689,7 +688,7 @@ std::vector<PsddNode *> PsddManager::SampleParametersForMultiplePsdds(
         next_subs[i] = (PsddNode *)subs[i]->user_data();
       }
       std::vector<PsddParameter> next_parameters(element_size);
-      for (auto i = 0; i < element_size; ++i) {
+      for (size_t i = 0; i < element_size; ++i) {
         next_parameters[i] = sampled_number[i] / sum;
       }
       PsddNode *new_node = GetConformedPsddDecisionNode(
@@ -699,7 +698,7 @@ std::vector<PsddNode *> PsddManager::SampleParametersForMultiplePsdds(
   }
   auto root_psdd_nodes_size = root_psdd_nodes.size();
   std::vector<PsddNode *> new_root_nodes(root_psdd_nodes_size, nullptr);
-  for (auto i = 0; i < root_psdd_nodes_size; ++i) {
+  for (size_t i = 0; i < root_psdd_nodes_size; ++i) {
     new_root_nodes[i] = (PsddNode *)root_psdd_nodes[i]->user_data();
   }
   for (PsddNode *cur_node : serialized_psdd_nodes) {
@@ -818,4 +817,162 @@ PsddNode *PsddManager::FromSdd(SddNode *root_node, Vtree *sdd_vtree,
   }
   free(serialized_sdd_nodes);
   return psdd_root_normalized_node;
+}
+
+PsddNode *PsddManager::LearnPsddParameters(
+    PsddNode *target_structure,
+    const std::unordered_map<int32_t, BatchedPsddValue> &examples,
+    size_t data_size, PsddParameter alpha, uintmax_t flag_index) {
+  std::vector<PsddNode *> serialized_psdd_nodes =
+      psdd_node_util::SerializePsddNodes(target_structure);
+  assert(serialized_psdd_nodes[0] == target_structure);
+  for (auto node_it = serialized_psdd_nodes.rbegin();
+       node_it != serialized_psdd_nodes.rend(); ++node_it) {
+    PsddNode *cur_node = *node_it;
+    // Initialize the context value
+    BatchedPsddValue initial_context_values(data_size, false);
+    cur_node->SetBatchedPsddContextValue(std::move(initial_context_values));
+    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *cur_literal_node = cur_node->psdd_literal_node();
+      auto example_it = examples.find(cur_literal_node->variable_index());
+      assert(example_it != examples.end());
+      BatchedPsddValue cur_batched_value = example_it->second;
+      assert(cur_batched_value.size() == data_size);
+      if (!cur_literal_node->sign()) {
+        auto data_size = cur_batched_value.size();
+        for (size_t i = 0; i < data_size; ++i) {
+          cur_batched_value[i] = !cur_batched_value[i];
+        }
+      }
+      cur_literal_node->SetBatchedPsddValue(std::move(cur_batched_value));
+      continue;
+    }
+    if (cur_node->node_type() == TOP_NODE_TYPE) {
+      BatchedPsddValue cur_batched_value(data_size, true);
+      cur_node->SetBatchedPsddValue(std::move(cur_batched_value));
+      continue;
+    }
+    if (cur_node->node_type() == DECISION_NODE_TYPE) {
+      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+      const auto &cur_primes = cur_decn_node->primes();
+      const auto &cur_subs = cur_decn_node->subs();
+      size_t element_size = cur_primes.size();
+      BatchedPsddValue cur_batched_value(data_size, false);
+      for (size_t i = 0; i < element_size; ++i) {
+        const auto &cur_prime_value = cur_primes[i]->batched_psdd_value();
+        const auto &cur_sub_value = cur_subs[i]->batched_psdd_value();
+        for (size_t cur_data_index = 0; cur_data_index < data_size;
+             ++cur_data_index) {
+          if (cur_prime_value[cur_data_index] &&
+              cur_sub_value[cur_data_index]) {
+            cur_batched_value[cur_data_index] = true;
+          }
+        }
+      }
+      cur_decn_node->SetBatchedPsddValue(std::move(cur_batched_value));
+      continue;
+    }
+  }
+  // Initialize the context value for the root node.
+  target_structure->MutableBatchedPsddContextValue()->flip();
+  for (PsddNode *cur_node : serialized_psdd_nodes) {
+    const auto &cur_contexts = cur_node->batched_psdd_context_value();
+    if (cur_node->node_type() == TOP_NODE_TYPE) {
+      PsddTopNode *cur_top_node = cur_node->psdd_top_node();
+      int32_t variable_index = cur_top_node->variable_index();
+      auto example_it = examples.find(variable_index);
+      assert(example_it != examples.end());
+      uintmax_t pos_data_count = 0;
+      uintmax_t neg_data_count = 0;
+      for (size_t i = 0; i < data_size; ++i) {
+        if (cur_contexts[i]) {
+          if (example_it->second[i]) {
+            ++pos_data_count;
+          } else {
+            ++neg_data_count;
+          }
+        }
+      }
+      cur_top_node->IncrementTrueDataCount(pos_data_count);
+      cur_top_node->IncrementFalseDataCount(neg_data_count);
+    } else if (cur_node->node_type() == DECISION_NODE_TYPE) {
+      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+      const auto &primes = cur_decn_node->primes();
+      const auto &subs = cur_decn_node->subs();
+      size_t element_size = primes.size();
+      for (size_t i = 0; i < element_size; ++i) {
+        const auto &cur_prime_value = primes[i]->batched_psdd_value();
+        const auto &cur_sub_value = subs[i]->batched_psdd_value();
+        for (size_t j = 0; j < data_size; ++j) {
+          if (cur_contexts[j] && cur_prime_value[j] && cur_sub_value[j]) {
+            cur_decn_node->IncrementDataCount(i, 1);
+            primes[i]->MutableBatchedPsddContextValue()->at(j) = true;
+            subs[i]->MutableBatchedPsddContextValue()->at(j) = true;
+          }
+        }
+      }
+    }
+    cur_node->MutableBatchedPsddContextValue()->clear();
+    cur_node->MutableBatchedPsddValue()->clear();
+  }
+  // Calculate local probability
+  for (auto it = serialized_psdd_nodes.rbegin();
+       it != serialized_psdd_nodes.rend(); ++it) {
+    PsddNode *cur_node = *it;
+    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+      PsddLiteralNode *cur_lit_node = cur_node->psdd_literal_node();
+      PsddLiteralNode *new_node =
+          GetPsddLiteralNode(cur_lit_node->literal(), flag_index);
+      cur_lit_node->SetUserData((uintmax_t)new_node);
+    } else if (cur_node->node_type() == TOP_NODE_TYPE) {
+      PsddTopNode *cur_top_node = cur_node->psdd_top_node();
+      // Calculates laplacian smoothed data counts
+      const auto true_data_count =
+          PsddParameter::CreateFromDecimal(
+              static_cast<double>(cur_top_node->true_data_count())) +
+          alpha;
+      const auto false_data_count =
+          PsddParameter::CreateFromDecimal(
+              static_cast<double>(cur_top_node->false_data_count())) +
+          alpha;
+      const auto total_data_count = true_data_count + false_data_count;
+      PsddTopNode *new_top_node =
+          GetPsddTopNode(cur_top_node->variable_index(), flag_index,
+                         true_data_count / total_data_count,
+                         false_data_count / total_data_count);
+      cur_top_node->SetUserData((uintmax_t)new_top_node);
+    } else {
+      assert(cur_node->node_type() == DECISION_NODE_TYPE);
+      PsddDecisionNode *cur_decision_node = cur_node->psdd_decision_node();
+      std::vector<PsddParameter> parameters;
+      const auto &primes = cur_decision_node->primes();
+      const auto &subs = cur_decision_node->subs();
+      size_t element_size = primes.size();
+      PsddParameter total_data_counts = PsddParameter::CreateFromDecimal(0);
+      const auto &data_counts = cur_decision_node->data_counts();
+      std::vector<PsddNode *> new_primes;
+      std::vector<PsddNode *> new_subs;
+      for (size_t i = 0; i < element_size; ++i) {
+        parameters.push_back(PsddParameter::CreateFromDecimal(
+                                 static_cast<double>(data_counts[i])) +
+                             alpha);
+        total_data_counts = total_data_counts + parameters.back();
+        new_primes.push_back((PsddNode *)primes[i]->user_data());
+        new_subs.push_back((PsddNode *)subs[i]->user_data());
+      }
+      for (size_t i = 0; i < element_size; ++i) {
+        parameters[i] = parameters[i] / total_data_counts;
+      }
+      PsddNode *new_decn_node = GetConformedPsddDecisionNode(
+          new_primes, new_subs, parameters, flag_index);
+      cur_decision_node->SetUserData((uintmax_t)new_decn_node);
+    }
+  }
+  PsddNode *result_node = (PsddNode *)target_structure->user_data();
+  // Clear learning states
+  for (PsddNode *cur_node : serialized_psdd_nodes) {
+    cur_node->ResetDataCount();
+    cur_node->SetUserData(0);
+  }
+  return result_node;
 }

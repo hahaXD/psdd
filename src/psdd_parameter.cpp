@@ -4,7 +4,8 @@
 
 #include <cmath>
 #include <limits>
-#include "psdd_parameter.h"
+#include <psdd/psdd_parameter.h>
+
 #define APPX_LEVEL 7
 
 PsddParameter::PsddParameter() : PsddParameter(std::log(0)) {}
