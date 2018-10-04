@@ -11,7 +11,8 @@
 PsddParameter::PsddParameter() : PsddParameter(std::log(0)) {}
 
 PsddParameter::PsddParameter(double parameter)
-    : parameter_(parameter), hash_value_(static_cast<uintmax_t >(parameter * std::pow(10, APPX_LEVEL))) {}
+    : parameter_(parameter), hash_value_(static_cast<uintmax_t>(
+                                 parameter * std::pow(10, APPX_LEVEL))) {}
 
 PsddParameter PsddParameter::CreateFromDecimal(double num) {
   return PsddParameter(std::log(num));
@@ -29,9 +30,11 @@ PsddParameter PsddParameter::operator+(const PsddParameter &other) const {
     return PsddParameter::CreateFromLog(parameter_);
   } else {
     if (parameter_ > other.parameter_) {
-      return PsddParameter(parameter_ + std::log1p(std::exp(other.parameter_ - parameter_)));
+      return PsddParameter(parameter_ +
+                           std::log1p(std::exp(other.parameter_ - parameter_)));
     } else {
-      return PsddParameter(other.parameter_ + std::log1p(std::exp(parameter_ - other.parameter_)));
+      return PsddParameter(other.parameter_ +
+                           std::log1p(std::exp(parameter_ - other.parameter_)));
     }
   }
 }
@@ -44,9 +47,7 @@ PsddParameter PsddParameter::operator*(const PsddParameter &other) const {
   return PsddParameter(parameter_ + other.parameter_);
 }
 
-double PsddParameter::parameter() const {
-  return parameter_;
-}
+double PsddParameter::parameter() const { return parameter_; }
 
 std::size_t PsddParameter::hash_value() const {
   return static_cast<std::size_t>(hash_value_);
@@ -60,19 +61,43 @@ bool PsddParameter::operator!=(const PsddParameter &other) const {
   return hash_value_ != other.hash_value_;
 }
 bool PsddParameter::operator<(const PsddParameter &other) const {
-  if (*this == other){
+  if (*this == other) {
     return false;
-  }else{
+  } else {
     return parameter_ < other.parameter();
   }
 }
 bool PsddParameter::operator>(const PsddParameter &other) const {
-  if (*this == other){
+  if (*this == other) {
     return false;
-  }else{
+  } else {
     return parameter_ > other.parameter();
   }
 }
 
+PsddParameter &PsddParameter::operator+=(const PsddParameter &other) {
+  if (parameter_ == -std::numeric_limits<double>::infinity()) {
+    // if this is zero
+    parameter_ = other.parameter_;
+  } else if (other.parameter_ == -std::numeric_limits<double>::infinity()) {
+    // No change on the paramter_
+  } else {
+    if (parameter_ > other.parameter_) {
+      parameter_ += std::log1p(std::exp(other.parameter_ - parameter_));
+    } else {
+      parameter_ = other.parameter_ +
+                   std::log1p(std::exp(parameter_ - other.parameter_));
+    }
+  }
+  return *this;
+}
 
+PsddParameter &PsddParameter::operator/=(const PsddParameter &other) {
+  parameter_ -= other.parameter_;
+  return *this;
+}
 
+PsddParameter &PsddParameter::operator*=(const PsddParameter &other) {
+  parameter_ += other.parameter_;
+  return *this;
+}

@@ -3,7 +3,7 @@ project(psdd)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
-include_directories(src include)
+include_directories(include)
 
 if(APPLE)
   link_directories(lib/darwin)
