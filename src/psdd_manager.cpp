@@ -826,94 +826,96 @@ PsddNode *PsddManager::LearnPsddParameters(
   std::vector<PsddNode *> serialized_psdd_nodes =
       psdd_node_util::SerializePsddNodes(target_structure);
   assert(serialized_psdd_nodes[0] == target_structure);
-  for (auto node_it = serialized_psdd_nodes.rbegin();
-       node_it != serialized_psdd_nodes.rend(); ++node_it) {
-    PsddNode *cur_node = *node_it;
-    // Initialize the context value
-    BatchedPsddValue initial_context_values(data_size, false);
-    cur_node->SetBatchedPsddContextValue(std::move(initial_context_values));
-    if (cur_node->node_type() == LITERAL_NODE_TYPE) {
-      PsddLiteralNode *cur_literal_node = cur_node->psdd_literal_node();
-      auto example_it = examples.find(cur_literal_node->variable_index());
-      assert(example_it != examples.end());
-      BatchedPsddValue cur_batched_value = example_it->second;
-      assert(cur_batched_value.size() == data_size);
-      if (!cur_literal_node->sign()) {
-        auto data_size = cur_batched_value.size();
+  if (data_size != 0) {
+    for (auto node_it = serialized_psdd_nodes.rbegin();
+         node_it != serialized_psdd_nodes.rend(); ++node_it) {
+      PsddNode *cur_node = *node_it;
+      // Initialize the context value
+      BatchedPsddValue initial_context_values(data_size, false);
+      cur_node->SetBatchedPsddContextValue(std::move(initial_context_values));
+      if (cur_node->node_type() == LITERAL_NODE_TYPE) {
+        PsddLiteralNode *cur_literal_node = cur_node->psdd_literal_node();
+        auto example_it = examples.find(cur_literal_node->variable_index());
+        assert(example_it != examples.end());
+        BatchedPsddValue cur_batched_value = example_it->second;
+        assert(cur_batched_value.size() == data_size);
+        if (!cur_literal_node->sign()) {
+          auto data_size = cur_batched_value.size();
+          for (size_t i = 0; i < data_size; ++i) {
+            cur_batched_value[i] = !cur_batched_value[i];
+          }
+        }
+        cur_literal_node->SetBatchedPsddValue(std::move(cur_batched_value));
+        continue;
+      }
+      if (cur_node->node_type() == TOP_NODE_TYPE) {
+        BatchedPsddValue cur_batched_value(data_size, true);
+        cur_node->SetBatchedPsddValue(std::move(cur_batched_value));
+        continue;
+      }
+      if (cur_node->node_type() == DECISION_NODE_TYPE) {
+        PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+        const auto &cur_primes = cur_decn_node->primes();
+        const auto &cur_subs = cur_decn_node->subs();
+        size_t element_size = cur_primes.size();
+        BatchedPsddValue cur_batched_value(data_size, false);
+        for (size_t i = 0; i < element_size; ++i) {
+          const auto &cur_prime_value = cur_primes[i]->batched_psdd_value();
+          const auto &cur_sub_value = cur_subs[i]->batched_psdd_value();
+          for (size_t cur_data_index = 0; cur_data_index < data_size;
+               ++cur_data_index) {
+            if (cur_prime_value[cur_data_index] &&
+                cur_sub_value[cur_data_index]) {
+              cur_batched_value[cur_data_index] = true;
+            }
+          }
+        }
+        cur_decn_node->SetBatchedPsddValue(std::move(cur_batched_value));
+        continue;
+      }
+    }
+    // Initialize the context value for the root node.
+    target_structure->MutableBatchedPsddContextValue()->flip();
+    for (PsddNode *cur_node : serialized_psdd_nodes) {
+      const auto &cur_contexts = cur_node->batched_psdd_context_value();
+      if (cur_node->node_type() == TOP_NODE_TYPE) {
+        PsddTopNode *cur_top_node = cur_node->psdd_top_node();
+        int32_t variable_index = cur_top_node->variable_index();
+        auto example_it = examples.find(variable_index);
+        assert(example_it != examples.end());
+        uintmax_t pos_data_count = 0;
+        uintmax_t neg_data_count = 0;
         for (size_t i = 0; i < data_size; ++i) {
-          cur_batched_value[i] = !cur_batched_value[i];
+          if (cur_contexts[i]) {
+            if (example_it->second[i]) {
+              ++pos_data_count;
+            } else {
+              ++neg_data_count;
+            }
+          }
         }
-      }
-      cur_literal_node->SetBatchedPsddValue(std::move(cur_batched_value));
-      continue;
-    }
-    if (cur_node->node_type() == TOP_NODE_TYPE) {
-      BatchedPsddValue cur_batched_value(data_size, true);
-      cur_node->SetBatchedPsddValue(std::move(cur_batched_value));
-      continue;
-    }
-    if (cur_node->node_type() == DECISION_NODE_TYPE) {
-      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
-      const auto &cur_primes = cur_decn_node->primes();
-      const auto &cur_subs = cur_decn_node->subs();
-      size_t element_size = cur_primes.size();
-      BatchedPsddValue cur_batched_value(data_size, false);
-      for (size_t i = 0; i < element_size; ++i) {
-        const auto &cur_prime_value = cur_primes[i]->batched_psdd_value();
-        const auto &cur_sub_value = cur_subs[i]->batched_psdd_value();
-        for (size_t cur_data_index = 0; cur_data_index < data_size;
-             ++cur_data_index) {
-          if (cur_prime_value[cur_data_index] &&
-              cur_sub_value[cur_data_index]) {
-            cur_batched_value[cur_data_index] = true;
+        cur_top_node->IncrementTrueDataCount(pos_data_count);
+        cur_top_node->IncrementFalseDataCount(neg_data_count);
+      } else if (cur_node->node_type() == DECISION_NODE_TYPE) {
+        PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
+        const auto &primes = cur_decn_node->primes();
+        const auto &subs = cur_decn_node->subs();
+        size_t element_size = primes.size();
+        for (size_t i = 0; i < element_size; ++i) {
+          const auto &cur_prime_value = primes[i]->batched_psdd_value();
+          const auto &cur_sub_value = subs[i]->batched_psdd_value();
+          for (size_t j = 0; j < data_size; ++j) {
+            if (cur_contexts[j] && cur_prime_value[j] && cur_sub_value[j]) {
+              cur_decn_node->IncrementDataCount(i, 1);
+              primes[i]->MutableBatchedPsddContextValue()->at(j) = true;
+              subs[i]->MutableBatchedPsddContextValue()->at(j) = true;
+            }
           }
         }
       }
-      cur_decn_node->SetBatchedPsddValue(std::move(cur_batched_value));
-      continue;
+      cur_node->MutableBatchedPsddContextValue()->clear();
+      cur_node->MutableBatchedPsddValue()->clear();
     }
-  }
-  // Initialize the context value for the root node.
-  target_structure->MutableBatchedPsddContextValue()->flip();
-  for (PsddNode *cur_node : serialized_psdd_nodes) {
-    const auto &cur_contexts = cur_node->batched_psdd_context_value();
-    if (cur_node->node_type() == TOP_NODE_TYPE) {
-      PsddTopNode *cur_top_node = cur_node->psdd_top_node();
-      int32_t variable_index = cur_top_node->variable_index();
-      auto example_it = examples.find(variable_index);
-      assert(example_it != examples.end());
-      uintmax_t pos_data_count = 0;
-      uintmax_t neg_data_count = 0;
-      for (size_t i = 0; i < data_size; ++i) {
-        if (cur_contexts[i]) {
-          if (example_it->second[i]) {
-            ++pos_data_count;
-          } else {
-            ++neg_data_count;
-          }
-        }
-      }
-      cur_top_node->IncrementTrueDataCount(pos_data_count);
-      cur_top_node->IncrementFalseDataCount(neg_data_count);
-    } else if (cur_node->node_type() == DECISION_NODE_TYPE) {
-      PsddDecisionNode *cur_decn_node = cur_node->psdd_decision_node();
-      const auto &primes = cur_decn_node->primes();
-      const auto &subs = cur_decn_node->subs();
-      size_t element_size = primes.size();
-      for (size_t i = 0; i < element_size; ++i) {
-        const auto &cur_prime_value = primes[i]->batched_psdd_value();
-        const auto &cur_sub_value = subs[i]->batched_psdd_value();
-        for (size_t j = 0; j < data_size; ++j) {
-          if (cur_contexts[j] && cur_prime_value[j] && cur_sub_value[j]) {
-            cur_decn_node->IncrementDataCount(i, 1);
-            primes[i]->MutableBatchedPsddContextValue()->at(j) = true;
-            subs[i]->MutableBatchedPsddContextValue()->at(j) = true;
-          }
-        }
-      }
-    }
-    cur_node->MutableBatchedPsddContextValue()->clear();
-    cur_node->MutableBatchedPsddValue()->clear();
   }
   // Calculate local probability
   for (auto it = serialized_psdd_nodes.rbegin();
