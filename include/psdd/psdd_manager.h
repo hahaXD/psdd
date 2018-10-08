@@ -4,7 +4,6 @@
 
 #ifndef PSDD_PSDD_MANAGER_H
 #define PSDD_PSDD_MANAGER_H
-#include <boost/dynamic_bitset.hpp>
 #include <psdd/psdd_node.h>
 #include <psdd/psdd_unique_table.h>
 extern "C" {

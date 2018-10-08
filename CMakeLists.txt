@@ -7,12 +7,17 @@ include_directories(include)
 
 if(APPLE)
   link_directories(lib/darwin)
-  set(gtest_main "libgtest_main.a")
-  set(gtest "libgtest.a")
-  set(sdd "libsdd.a")
-  set(gmock "libgmock.a")
-  set(gmock_main "libgmock_main.a")
 endif(APPLE)
+
+if(UNIX AND NOT APPLE)
+  link_directories(lib/linux)
+endif(UNIX AND NOT APPLE)  
+
+set(gtest_main "libgtest_main.a")
+set(gtest "libgtest.a")
+set(sdd "libsdd.a")
+set(gmock "libgmock.a")
+set(gmock_main "libgmock_main.a")
 
 file(GLOB PSDD_TEST_SRC_FILES "test/*.cpp")
 file(GLOB LIB_PSDD_SRC_FILES "src/*.h" "src/*.cpp" "src/*.c")
