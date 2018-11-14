@@ -97,12 +97,22 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
   std::ifstream data_input_stream(data_file);
   json data_input_json;
   data_input_stream >> data_input_json;
+  auto variable_size = MAX_VAR;
+  std::bitset<MAX_VAR> variable_mask;
   if (data_input_json.find("variable_size") == data_input_json.end()) {
-    std::cerr << "Cannot find \"variable_size\" field in json input "
-              << std::endl;
-    return nullptr;
+    // std::cerr << "Cannot find \"variable_size\" field in json input "
+    //          << std::endl;
+    // return nullptr;
+  } else {
+    auto variable_size = data_input_json["variable_size"];
   }
-  auto variable_size = data_input_json["variable_size"];
+  if (data_input_json.find("mask") != data_input_json.end()) {
+    for (auto it = data_input_json["mask"].begin();
+         it != data_input_json["mask"].end(); ++it) {
+      size_t cur_var = *it;
+      variable_mask.set(cur_var);
+    }
+  }
   if (data_input_json.find("data") == data_input_json.end()) {
     std::cerr << "Cannot find \"data\" field in the json input" << std::endl;
     return nullptr;
@@ -113,6 +123,7 @@ BinaryData *BinaryData::ReadSparseDataJsonFile(const char *data_file) {
   }
   auto new_dataset = new BinaryData();
   new_dataset->set_variable_size((uint32_t)variable_size);
+  new_dataset->SetMask(variable_mask);
   size_t iteration_index = 0;
   for (auto it = data.begin(); it != data.end(); ++it) {
     const auto &cur_example = *it;

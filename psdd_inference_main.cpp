@@ -37,7 +37,14 @@ struct Arg : public option::Arg {
     return option::ARG_ILLEGAL;
   }
 };
-enum optionIndex { UNKNOWN, HELP, MPE_QUERY, MAR_QUERY, CNF_EVID };
+enum optionIndex {
+  UNKNOWN,
+  HELP,
+  MPE_QUERY,
+  MAR_QUERY,
+  CNF_EVID,
+  SPARSE_DATA_FILENAME
+};
 
 const option::Descriptor usage[] = {
     {UNKNOWN, 0, "", "", option::Arg::None,
@@ -48,6 +55,8 @@ const option::Descriptor usage[] = {
     {MAR_QUERY, 0, "", "mar_query", option::Arg::None, ""},
     {CNF_EVID, 0, "", "cnf_evid", Arg::Required,
      "--cnf_evid  evid file, represented using CNF."},
+    {SPARSE_DATA_FILENAME, 0, "", "sparse_data_filename", Arg::Required,
+     "--sparse_data_filename sparse data filename to check consistency."},
     {UNKNOWN, 0, "", "", option::Arg::None,
      "\nExamples:\n./psdd_inference  psdd_filename vtree_filename \n"},
     {0, 0, 0, 0, 0, 0}};
@@ -76,6 +85,26 @@ int main(int argc, const char *argv[]) {
   PsddManager *psdd_manager = PsddManager::GetPsddManagerFromVtree(psdd_vtree);
   sdd_vtree_free(psdd_vtree);
   PsddNode *result_node = psdd_manager->ReadPsddFile(psdd_filename, 0);
+  if (options[SPARSE_DATA_FILENAME]) {
+    std::vector<PsddNode *> serialized_psdd_nodes =
+        psdd_node_util::SerializePsddNodes(result_node);
+    const char *sparse_data_filename = options[SPARSE_DATA_FILENAME].arg;
+    BinaryData *sparse_data =
+        BinaryData::ReadSparseDataJsonFile(sparse_data_filename);
+    const auto &data_record = sparse_data->data();
+    uintmax_t satisfied_records = 0;
+    uintmax_t inconsistent_records = 0;
+    std::bitset<MAX_VAR> variable_mask = sparse_data->variable_mask();
+    for (const auto &record_pair : data_record) {
+      if (psdd_node_util::IsConsistent(serialized_psdd_nodes, variable_mask, record_pair.first)){
+        satisfied_records += record_pair.second;
+      }else{
+        inconsistent_records += record_pair.second;
+      }
+    }
+    std::cout << "Consistent Data" << satisfied_records << " Inconsistent Data " << inconsistent_records << std::endl;
+    delete sparse_data;
+  }
   if (cnf != nullptr) {
     PsddNode *evid = cnf->Compile(psdd_manager, 0);
     auto new_node_result = psdd_manager->Multiply(evid, result_node, 0);
