@@ -67,48 +67,19 @@ int main(int argc, const char *argv[]) {
   }
   const char *psdd_filename = parse.nonOption(0);
   const char *vtree_filename = parse.nonOption(1);
-  CNF *cnf = nullptr;
-  if (options[CNF_EVID]) {
-    const char *cnf_filename = options[CNF_EVID].arg;
-    cnf = new CNF(cnf_filename);
-  }
+
   Vtree *psdd_vtree = sdd_vtree_read(vtree_filename);
   PsddManager *psdd_manager = PsddManager::GetPsddManagerFromVtree(psdd_vtree);
   sdd_vtree_free(psdd_vtree);
   PsddNode *result_node = psdd_manager->ReadPsddFile(psdd_filename, 0);
-  if (cnf != nullptr) {
-    PsddNode *evid = cnf->Compile(psdd_manager, 0);
-    auto new_node_result = psdd_manager->Multiply(evid, result_node, 0);
-    result_node = new_node_result.first;
-  }
-  if (result_node == nullptr) {
-    std::cout << "UNSATISFIED" << std::endl;
-    exit(0);
-  }
   std::vector<SddLiteral> variables =
       vtree_util::VariablesUnderVtree(psdd_manager->vtree());
   auto serialized_psdd = psdd_node_util::SerializePsddNodes(result_node);
-  if (options[MPE_QUERY]) {
-    auto mpe_result = psdd_node_util::GetMPESolution(serialized_psdd);
-    std::cout << "MPE result=";
-    for (SddLiteral variable_index : variables) {
-      std::cout << variable_index << ":" << mpe_result.first[variable_index]
-                << ",";
-    }
-    std::cout << std::endl;
-  }
-  if (options[MAR_QUERY]) {
-    auto mar_result = psdd_node_util::GetMarginals(serialized_psdd);
-    std::cout << "MAR result=";
-    for (auto result_pair : mar_result) {
-      std::cout << result_pair.first << ":"
-                << result_pair.second.first.parameter() << "|"
-                << result_pair.second.second.parameter() << ",";
-    }
-    std::cout << std::endl;
+  auto mpe_result = psdd_node_util::GetMPESolution(serialized_psdd);
+  std::bitset<MAX_VAR> var_mask;
+  var_mask.set();
+  for (auto i = 0; i < 10000; ++i){
+      psdd_node_util::Evaluate(var_mask, mpe_result.first, serialized_psdd);
   }
   delete (psdd_manager);
-  if (cnf != nullptr) {
-    delete (cnf);
-  }
 }
