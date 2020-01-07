@@ -47,6 +47,9 @@ CNF::CNF(const char *filename) {
     if (line[0] == 'p') {
       continue;
     }
+    if (line[0] == 'c'){
+      continue;
+    }
     std::vector<SddLiteral> clause;
     std::stringstream ss(line);
     SddLiteral token;
