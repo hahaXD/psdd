@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <algorithm>
 #include <psdd/cnf.h>
 #include <psdd/optionparser.h>
 extern "C" {
@@ -87,6 +88,7 @@ int main(int argc, const char *argv[]) {
   }
   std::vector<SddLiteral> variables =
       vtree_util::VariablesUnderVtree(psdd_manager->vtree());
+  std::sort(variables.begin(), variables.end());
   auto serialized_psdd = psdd_node_util::SerializePsddNodes(result_node);
   if (options[MPE_QUERY]) {
     auto mpe_result = psdd_node_util::GetMPESolution(serialized_psdd);
@@ -96,14 +98,16 @@ int main(int argc, const char *argv[]) {
                 << ",";
     }
     std::cout << std::endl;
+    std::cout << "MPE pr=" << mpe_result.second.parameter() << std::endl; 
   }
   if (options[MAR_QUERY]) {
     auto mar_result = psdd_node_util::GetMarginals(serialized_psdd);
     std::cout << "MAR result=";
-    for (auto result_pair : mar_result) {
-      std::cout << result_pair.first << ":"
-                << result_pair.second.first.parameter() << "|"
-                << result_pair.second.second.parameter() << ",";
+    for (SddLiteral variable_index : variables) {
+        auto cur_mar_result = mar_result[variable_index];
+        std::cout << variable_index << ":"
+                << cur_mar_result.first.parameter() << "|"
+                << cur_mar_result.second.parameter() << ",";
     }
     std::cout << std::endl;
   }
