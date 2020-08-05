@@ -79,7 +79,7 @@ int main(int argc, const char *argv[]) {
   std::bitset<MAX_VAR> var_mask;
   var_mask.set();
   for (auto i = 0; i < 10000; ++i){
-      psdd_node_util::Evaluate(var_mask, mpe_result.first, serialized_psdd);
+      std::cout << psdd_node_util::Evaluate(var_mask, mpe_result.first, serialized_psdd).parameter() << std::endl;
   }
   delete (psdd_manager);
 }
