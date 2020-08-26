@@ -2,10 +2,11 @@
 // Created by Jason Shen on 4/22/18.
 //
 
-#include <iostream>
-#include <algorithm>
 #include <psdd/cnf.h>
 #include <psdd/optionparser.h>
+
+#include <algorithm>
+#include <iostream>
 extern "C" {
 #include <sdd/sddapi.h>
 }
@@ -18,11 +19,9 @@ struct Arg : public option::Arg {
   }
 
   static option::ArgStatus Required(const option::Option &option, bool msg) {
-    if (option.arg != 0)
-      return option::ARG_OK;
+    if (option.arg != 0) return option::ARG_OK;
 
-    if (msg)
-      printError("Option '", option, "' requires an argument\n");
+    if (msg) printError("Option '", option, "' requires an argument\n");
     return option::ARG_ILLEGAL;
   }
 
@@ -30,11 +29,9 @@ struct Arg : public option::Arg {
     char *endptr = 0;
     if (option.arg != 0 && strtol(option.arg, &endptr, 10)) {
     };
-    if (endptr != option.arg && *endptr == 0)
-      return option::ARG_OK;
+    if (endptr != option.arg && *endptr == 0) return option::ARG_OK;
 
-    if (msg)
-      printError("Option '", option, "' requires a numeric argument\n");
+    if (msg) printError("Option '", option, "' requires a numeric argument\n");
     return option::ARG_ILLEGAL;
   }
 };
@@ -55,13 +52,12 @@ const option::Descriptor usage[] = {
 
 int main(int argc, const char *argv[]) {
   argc -= (argc > 0);
-  argv += (argc > 0); // skip program name argv[0] if present
+  argv += (argc > 0);  // skip program name argv[0] if present
   option::Stats stats(usage, argc, argv);
   std::vector<option::Option> options(stats.options_max);
   std::vector<option::Option> buffer(stats.buffer_max);
   option::Parser parse(usage, argc, argv, &options[0], &buffer[0]);
-  if (parse.error())
-    return 1;
+  if (parse.error()) return 1;
   if (options[HELP] || argc == 0) {
     option::printUsage(std::cout, usage);
     return 0;
@@ -98,16 +94,15 @@ int main(int argc, const char *argv[]) {
                 << ",";
     }
     std::cout << std::endl;
-    std::cout << "MPE pr=" << mpe_result.second.parameter() << std::endl; 
+    std::cout << "MPE pr=" << mpe_result.second.parameter() << std::endl;
   }
   if (options[MAR_QUERY]) {
     auto mar_result = psdd_node_util::GetMarginals(serialized_psdd);
     std::cout << "MAR result=";
     for (SddLiteral variable_index : variables) {
-        auto cur_mar_result = mar_result[variable_index];
-        std::cout << variable_index << ":"
-                << cur_mar_result.first.parameter() << "|"
-                << cur_mar_result.second.parameter() << ",";
+      auto cur_mar_result = mar_result[variable_index];
+      std::cout << variable_index << ":" << cur_mar_result.first.parameter()
+                << "|" << cur_mar_result.second.parameter() << ",";
     }
     std::cout << std::endl;
   }
