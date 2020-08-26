@@ -2,12 +2,13 @@
 // Created by Yujia Shen on 3/20/18.
 //
 
+#include <psdd/psdd_manager.h>
+#include <psdd/psdd_unique_table.h>
+
 #include <cassert>
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <psdd/psdd_manager.h>
-#include <psdd/psdd_unique_table.h>
 #include <queue>
 #include <sstream>
 #include <stack>
@@ -38,11 +39,12 @@ struct MultiplyFunctional {
 };
 
 class ComputationCache {
-public:
+ public:
   explicit ComputationCache(uint32_t variable_size)
       : cache_(2 * variable_size - 1) {}
-  std::pair<PsddNode *, Probability>
-  Lookup(PsddNode *first_node, PsddNode *second_node, bool *found) const {
+  std::pair<PsddNode *, Probability> Lookup(PsddNode *first_node,
+                                            PsddNode *second_node,
+                                            bool *found) const {
     auto vtree_index = sdd_vtree_position(first_node->vtree_node());
     assert(cache_.size() > static_cast<size_t>(vtree_index));
     const auto &cache_at_vtree = cache_[vtree_index];
@@ -64,20 +66,19 @@ public:
     cache_[vtree_index][node_pair] = result;
   }
 
-private:
+ private:
   std::vector<std::unordered_map<std::pair<PsddNode *, PsddNode *>,
                                  std::pair<PsddNode *, Probability>,
                                  MultiplyFunctional, MultiplyFunctional>>
       cache_;
 };
 
-std::pair<PsddNode *, PsddParameter>
-MultiplyWithCache(PsddNode *first, PsddNode *second, PsddManager *manager,
-                  uintmax_t flag_index, ComputationCache *cache) {
+std::pair<PsddNode *, PsddParameter> MultiplyWithCache(
+    PsddNode *first, PsddNode *second, PsddManager *manager,
+    uintmax_t flag_index, ComputationCache *cache) {
   bool found = false;
   auto result = cache->Lookup(first, second, &found);
-  if (found)
-    return result;
+  if (found) return result;
   assert(sdd_vtree_position(first->vtree_node()) ==
          sdd_vtree_position(second->vtree_node()));
   if (first->node_type() == DECISION_NODE_TYPE) {
@@ -222,7 +223,7 @@ MultiplyWithCache(PsddNode *first, PsddNode *second, PsddManager *manager,
     }
   }
 }
-} // namespace
+}  // namespace
 
 PsddManager *PsddManager::GetPsddManagerFromSddVtree(
     Vtree *sdd_vtree,
@@ -260,7 +261,9 @@ PsddManager *PsddManager::GetPsddManagerFromSddVtree(
   return new PsddManager(psdd_vtree, unique_table);
 }
 PsddManager::PsddManager(Vtree *vtree, PsddUniqueTable *unique_table)
-    : vtree_(vtree), unique_table_(unique_table), node_index_(0),
+    : vtree_(vtree),
+      unique_table_(unique_table),
+      node_index_(0),
       leaf_vtree_map_() {
   std::vector<Vtree *> serialized_vtrees = vtree_util::SerializeVtree(vtree_);
   for (Vtree *cur_v : serialized_vtrees) {
@@ -459,10 +462,10 @@ PsddManager *PsddManager::GetPsddManagerFromVtree(Vtree *psdd_vtree) {
   auto *unique_table = PsddUniqueTable::GetPsddUniqueTable();
   return new PsddManager(copy_vtree, unique_table);
 }
-PsddTopNode *
-PsddManager::GetPsddTopNode(uint32_t variable_index, uintmax_t flag_index,
-                            const PsddParameter &positive_parameter,
-                            const PsddParameter &negative_parameter) {
+PsddTopNode *PsddManager::GetPsddTopNode(
+    uint32_t variable_index, uintmax_t flag_index,
+    const PsddParameter &positive_parameter,
+    const PsddParameter &negative_parameter) {
   assert(leaf_vtree_map_.find(variable_index) != leaf_vtree_map_.end());
   Vtree *target_vtree_node = leaf_vtree_map_[variable_index];
   assert(sdd_vtree_is_leaf(target_vtree_node));
@@ -567,8 +570,8 @@ PsddNode *PsddManager::NormalizePsddNode(Vtree *target_vtree_node,
                            &true_node_map);
 }
 
-std::pair<PsddNode *, PsddParameter>
-PsddManager::Multiply(PsddNode *arg1, PsddNode *arg2, uintmax_t flag_index) {
+std::pair<PsddNode *, PsddParameter> PsddManager::Multiply(
+    PsddNode *arg1, PsddNode *arg2, uintmax_t flag_index) {
   ComputationCache cache((uint32_t)leaf_vtree_map_.size());
   return MultiplyWithCache(arg1, arg2, this, flag_index, &cache);
 }
@@ -580,7 +583,7 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename,
   psdd_file.open(psdd_filename);
   if (!psdd_file) {
     std::cerr << "File " << psdd_filename << " cannot be open.";
-    exit(1); // terminate with error
+    exit(1);  // terminate with error
   }
   std::string line;
   PsddNode *root_node = nullptr;
@@ -637,8 +640,13 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename,
         subs.push_back(sub_node);
         params.push_back(PsddParameter::CreateFromLog(weight_in_log));
       }
-      PsddNode *cur_node =
-          GetConformedPsddDecisionNode(primes, subs, params, flag_index);
+      assert(sdd_vtree_parent(primes[0]->vtree_node()) ==
+             sdd_vtree_parent(subs[0]->vtree_node()));
+      Vtree *next_vtree = sdd_vtree_parent(primes[0]->vtree_node());
+      auto cur_node = new PsddDecisionNode(node_index_, next_vtree, flag_index,
+                                           primes, subs, params);
+      cur_node = (PsddDecisionNode *)unique_table_->GetUniqueNode(cur_node,
+                                                                  &node_index_);
       construct_cache[node_index] = cur_node;
       root_node = cur_node;
     }

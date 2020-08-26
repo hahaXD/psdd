@@ -198,6 +198,7 @@ int main(int argc, const char *argv[]) {
   const char *vtree_filename = argv[2];
 
   // load PSDD from files
+  auto load_psdd_start = std::chrono::steady_clock::now();
   Vtree *psdd_vtree = sdd_vtree_read(vtree_filename);
   PsddManager *psdd_manager = PsddManager::GetPsddManagerFromVtree(psdd_vtree);
   sdd_vtree_free(psdd_vtree);
@@ -205,6 +206,13 @@ int main(int argc, const char *argv[]) {
 
   auto cbp_serialized_psdds = psdd_node_util::SerializePsddNodes(result_node);
   std::reverse(cbp_serialized_psdds.begin(), cbp_serialized_psdds.end());
+  auto load_psdd_end = std::chrono::steady_clock::now();
+
+  std::cout << "Psdd file is loaded with time :"
+            << std::chrono::duration_cast<std::chrono::milliseconds>(
+                   load_psdd_end - load_psdd_start)
+                   .count()
+            << std::endl;
 
   // generates random evids
   const size_t batch_size = 1024;
