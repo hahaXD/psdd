@@ -3,6 +3,7 @@
 //
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -213,9 +214,10 @@ int main(int argc, const char *argv[]) {
                    load_psdd_end - load_psdd_start)
                    .count()
             << std::endl;
+  std::cout << "PSDD size " <<  cbp_serialized_psdds.size() << std::endl;
 
   // generates random evids
-  const size_t batch_size = 1024;
+  const size_t batch_size = 256;
   std::vector<SddLiteral> evids;
   auto mar_result = psdd_node_util::GetMarginals(cbp_serialized_psdds);
   SddLiteral var_size = mar_result.size();

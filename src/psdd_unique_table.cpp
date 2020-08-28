@@ -5,9 +5,68 @@
 #include <psdd/psdd_node.h>
 #include <psdd/psdd_unique_table.h>
 
+#include <set>
 #include <unordered_set>
 
 namespace {
+struct PsddUniqueTableSetFunctional {
+  bool operator()(PsddNode *node_a, PsddNode *node_b) const {
+    if (node_a->flag_index() != node_b->flag_index()) {
+      return node_a->flag_index() < node_b->flag_index();
+    }
+    if (node_a->node_type() == LITERAL_NODE_TYPE) {
+      if (node_b->node_type() != LITERAL_NODE_TYPE) {
+        return true;
+      }
+      return node_a->psdd_literal_node()->literal() <
+             node_b->psdd_literal_node()->literal();
+    } else if (node_a->node_type() == TOP_NODE_TYPE) {
+      if (node_b->node_type() == LITERAL_NODE_TYPE) {
+        return false;
+      }
+      if (node_b->node_type() == DECISION_NODE_TYPE) {
+        return true;
+      }
+      if (node_a->psdd_top_node()->variable_index() !=
+          node_b->psdd_top_node()->variable_index()) {
+        return node_a->psdd_top_node()->variable_index() <
+               node_b->psdd_top_node()->variable_index();
+      } else {
+        return node_a->psdd_top_node()->true_parameter() <
+               node_b->psdd_top_node()->true_parameter();
+      }
+    } else {
+      if (node_b->node_type() != DECISION_NODE_TYPE) {
+        return false;
+      }
+      auto a_size = node_a->psdd_decision_node()->primes().size();
+      for (auto i = 0; i < a_size; ++i) {
+        if (i >= node_b->psdd_decision_node()->primes().size()) {
+          return false;
+        }
+        if (node_a->psdd_decision_node()->primes()[i]->node_index() !=
+            node_b->psdd_decision_node()->primes()[i]->node_index()) {
+          return node_a->psdd_decision_node()->primes()[i]->node_index() <
+                 node_b->psdd_decision_node()->primes()[i]->node_index();
+        } else if (node_a->psdd_decision_node()->subs()[i]->node_index() !=
+                   node_b->psdd_decision_node()->subs()[i]->node_index()) {
+          return node_a->psdd_decision_node()->subs()[i]->node_index() <
+                 node_b->psdd_decision_node()->subs()[i]->node_index();
+        } else if (node_a->psdd_decision_node()->parameters()[i] !=
+                   node_b->psdd_decision_node()->parameters()[i]) {
+          return node_a->psdd_decision_node()->parameters()[i] <
+                 node_b->psdd_decision_node()->parameters()[i];
+        }
+      }
+      if (node_b->psdd_decision_node()->primes().size() >
+          node_a->psdd_decision_node()->primes().size()) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+};
 struct UniqueTableFunctional {
   std::size_t operator()(const PsddNode *node) const {
     return node->hash_value();
@@ -44,7 +103,7 @@ struct UniqueTableFunctional {
   }
 };
 class PsddUniqueTableImp : public PsddUniqueTable {
-public:
+ public:
   PsddUniqueTableImp() : PsddUniqueTable() {}
   ~PsddUniqueTableImp() override = default;
   PsddNode *GetUniqueNode(PsddNode *node, uintmax_t *node_index) override {
@@ -70,8 +129,10 @@ public:
         }
       } else {
         literal_node_table_[cur_node_vtree_position] =
-            std::unordered_set<PsddLiteralNode *, UniqueTableFunctional,
-                               UniqueTableFunctional>({cur_literal_node});
+            std::set<PsddNode *, PsddUniqueTableSetFunctional>(
+                {cur_literal_node});
+        // std::unordered_set<PsddLiteralNode *, UniqueTableFunctional,
+        //                     UniqueTableFunctional>({cur_literal_node});
         if (node_index != nullptr) {
           *node_index += 1;
         }
@@ -99,8 +160,10 @@ public:
         }
       } else {
         decision_node_table_[cur_node_vtree_position] =
-            std::unordered_set<PsddDecisionNode *, UniqueTableFunctional,
-                               UniqueTableFunctional>({cur_decision_node});
+            std::set<PsddNode *, PsddUniqueTableSetFunctional>(
+                {cur_decision_node});
+        // std::unordered_set<PsddDecisionNode *, UniqueTableFunctional,
+        //                     UniqueTableFunctional>({cur_decision_node});
         if (node_index != nullptr) {
           *node_index += 1;
         }
@@ -128,8 +191,9 @@ public:
         }
       } else {
         top_node_table_[cur_node_vtree_position] =
-            std::unordered_set<PsddTopNode *, UniqueTableFunctional,
-                               UniqueTableFunctional>({cur_top_node});
+            std::set<PsddNode *, PsddUniqueTableSetFunctional>({cur_top_node});
+        // std::unordered_set<PsddTopNode *, UniqueTableFunctional,
+        //                     UniqueTableFunctional>({cur_top_node});
         if (node_index != nullptr) {
           *node_index += 1;
         }
@@ -252,21 +316,33 @@ public:
     }
   }
 
-private:
-  std::unordered_map<
-      SddLiteral, std::unordered_set<PsddDecisionNode *, UniqueTableFunctional,
-                                     UniqueTableFunctional>>
+ private:
+  std::unordered_map<SddLiteral,
+                     std::set<PsddNode *, PsddUniqueTableSetFunctional>>
       decision_node_table_;
-  std::unordered_map<
-      SddLiteral, std::unordered_set<PsddLiteralNode *, UniqueTableFunctional,
-                                     UniqueTableFunctional>>
+  std::unordered_map<SddLiteral,
+                     std::set<PsddNode *, PsddUniqueTableSetFunctional>>
       literal_node_table_;
   std::unordered_map<SddLiteral,
-                     std::unordered_set<PsddTopNode *, UniqueTableFunctional,
-                                        UniqueTableFunctional>>
+                     std::set<PsddNode *, PsddUniqueTableSetFunctional>>
       top_node_table_;
+
+  // std::unordered_map<
+  //     SddLiteral, std::unordered_set<PsddDecisionNode *,
+  //     UniqueTableFunctional,
+  //                                    UniqueTableFunctional>>
+  //     decision_node_table_;
+  // std::unordered_map<
+  //     SddLiteral, std::unordered_set<PsddLiteralNode *,
+  //     UniqueTableFunctional,
+  //                                    UniqueTableFunctional>>
+  //     literal_node_table_;
+  // std::unordered_map<SddLiteral,
+  //                    std::unordered_set<PsddTopNode *, UniqueTableFunctional,
+  //                                       UniqueTableFunctional>>
+  //     top_node_table_;
 };
-} // namespace
+}  // namespace
 
 PsddUniqueTable *PsddUniqueTable::GetPsddUniqueTable() {
   return new PsddUniqueTableImp();

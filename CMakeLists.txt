@@ -9,10 +9,12 @@ link_directories(/usr/local/lib)
 
 if(APPLE)
   link_directories(lib/darwin)
+  set(htd "libhtd.0.dylib")
 endif(APPLE)
 
 if(UNIX AND NOT APPLE)
   link_directories(lib/linux)
+  set(htd "libhtd.so")
 endif(UNIX AND NOT APPLE)  
 
 set(gtest_main "libgtest_main.a")
@@ -20,7 +22,6 @@ set(gtest "libgtest.a")
 set(sdd "libsdd.a")
 set(gmock "libgmock.a")
 set(gmock_main "libgmock_main.a")
-set(htd "libhtd.0.dylib")
 
 
 file(GLOB PSDD_TEST_SRC_FILES "test/*.cpp")

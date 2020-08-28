@@ -587,11 +587,15 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename,
   }
   std::string line;
   PsddNode *root_node = nullptr;
+  uint32_t psdd_size;
+  uint32_t num_constructed = 0;
   while (std::getline(psdd_file, line)) {
     if (line[0] == 'c') {
       continue;
     }
     if (line[0] == 'p') {
+      std::istringstream iss(line.substr(5, std::string::npos));
+      iss >> psdd_size;
       continue;
     }
     if (line[0] == 'L') {
@@ -650,8 +654,11 @@ PsddNode *PsddManager::ReadPsddFile(const char *psdd_filename,
       construct_cache[node_index] = cur_node;
       root_node = cur_node;
     }
+    num_constructed ++;
+    std::cout << "\rConstructed " << num_constructed << "Remaining " << psdd_size - num_constructed; 
   }
   psdd_file.close();
+  std::cout << std::endl;
   return root_node;
 }
 std::vector<PsddNode *> PsddManager::SampleParametersForMultiplePsdds(
