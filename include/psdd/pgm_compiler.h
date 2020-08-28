@@ -12,6 +12,7 @@ class PgmCompiler {
  public:
   PgmCompiler();
   void init_psdd_manager(char mode);
+  void init_psdd_manager_from_vtree(const char *vtree_fname);
   void read_uai_file(const char *uai_file);
   PsddManager *psdd_manager() const;
   std::pair<PsddNode *, PsddParameter> compile_factor(size_t factor_index);

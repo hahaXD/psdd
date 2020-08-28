@@ -601,38 +601,56 @@ std::pair<PsddNode*, PsddParameter> PgmCompiler::compile_network_dc(
   for (auto n_id : compilation_order) {
     nodes_to_mult.push_back(nodes[n_id]);
   }
+  std::cout.width(30);
+  std::cout << std::left << "Arg1 size:";
+  std::cout.width(30);
+  std::cout << std::left << "Arg2 size:";
+  std::cout.width(15);
+  std::cout << std::left << "Processed";
+  std::cout.width(15);
+  std::cout << std::left << "Remaining" << std::endl;
   while (nodes_to_mult.size() > 1) {
     PsddNode* a = nodes_to_mult.front();
     nodes_to_mult.pop_front();
     PsddNode* b = nodes_to_mult.front();
     nodes_to_mult.pop_front();
-    std::cout << "Arg1 size :" << psdd_node_util::SerializePsddNodes(a).size()
-              << " Arg2 size :" << psdd_node_util::SerializePsddNodes(b).size()
-              << std::endl;
+    std::cout << "\r";
+    std::cout.width(30);
+    std::cout << std::left << psdd_node_util::SerializePsddNodes(a).size();
+    std::cout.width(30);
+    std::cout << std::left << psdd_node_util::SerializePsddNodes(b).size();
     proc_nodes += 1;
-    std::cout << "Processed " << proc_nodes << " Remaining "
-              << nodes.size() - proc_nodes << std::endl;
+    std::cout.width(15);
+    std::cout << std::left << proc_nodes;
+    std::cout.width(15);
+    std::cout << std::left << nodes.size() - proc_nodes;
     auto mult_result = m_pm->Multiply(a, b, /*flag_index*/ 0);
     z *= mult_result.second;
     nodes_to_mult.push_back(mult_result.first);
     if ((proc_nodes % gc_freq) == 0) {
-      std::cout << "Start to GC" << std::endl;
+      std::cout << "\rStart to GC ";
       std::vector<PsddNode*> used_nodes(nodes_to_mult.begin(),
                                         nodes_to_mult.end());
       m_pm->DeleteUnusedPsddNodes(used_nodes);
-      std::cout << "Finish GC" << std::endl;
+      std::cout << "Finish GC";
     }
   }
+  std::cout << std::endl;
   return {nodes_to_mult.front(), z};
+}
+
+void PgmCompiler::init_psdd_manager_from_vtree(const char* vtree_fname) {
+  Vtree* v = sdd_vtree_read(vtree_fname);
+  m_pm = PsddManager::GetPsddManagerFromVtree(v);
+  sdd_vtree_free(v);
+  return;
 }
 
 void PgmCompiler::init_psdd_manager(char mode) {
   if (mode == VTREE_METHOD_MINFILL) {
-    std::cout << "Get Minfill" << std::endl;
     auto vtree = GetMinFillVtree(m_network);
     m_pm = PsddManager::GetPsddManagerFromVtree(vtree);
     sdd_vtree_free(vtree);
-    std::cout << "After Minfill" << std::endl;
     return;
   } else {
     std::string pid_affix = std::to_string(getpid());
