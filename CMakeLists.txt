@@ -16,6 +16,7 @@ endif(APPLE)
 if(UNIX AND NOT APPLE)
   link_directories(lib/linux)
   set(htd "libhtd.so")
+  set(kahypar "libkahypar.so")
 endif(UNIX AND NOT APPLE)  
 
 set(gtest_main "libgtest_main.a")
