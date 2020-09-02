@@ -12,15 +12,21 @@
 
 int main(int argc, const char* argv[]) {
   if (argc < 3) {
-    std::cout << "Usage <uai_fname> <vtree_method>" << std::endl;
+    std::cout
+        << "Usage <uai_fname> <vtree_method> <(optional) working_directory>"
+        << std::endl;
     std::cout << "vtree_method can be\n";
-    std::cout << "  1 (hyper tree partition that only works on linux) \n";
+    std::cout << "  1 (hyper tree partition) \n";
+    std::cout << "  2 (vtree from a join tree)\n";
     std::cout
         << "  4 (vtree from minfill order that works on both mac and linux) \n";
     std::cout
         << "  others (the argument is interpreted as a vtree filename) \n";
     std::cout << "Psdd and Vtree files are stored as the name of "
-                 "<uai_fname>.psdd and <uai_fname>.vtree"
+                 "<uai_fname>.psdd and <uai_fname>.vtree\n";
+    std::cout << "working_directory is the directory where all temporary "
+                 "configuration files are stored. The default is the current "
+                 "directory."
               << std::endl;
     exit(1);
   }
@@ -34,11 +40,21 @@ int main(int argc, const char* argv[]) {
   } else if (strcmp(vtree_method, "4") == 0) {
     vtree_method_idx = VTREE_METHOD_MINFILL;
     gen_vtree = true;
+  } else if (strcmp(vtree_method, "2") == 0) {
+    vtree_method_idx = VTREE_METHOD_JOINTREE;
+    gen_vtree = true;
   } else {
     vtree_method_idx = -1;
   }
 
-  PgmCompiler pc;
+  std::string working_dir = "";
+  if (argc == 4) {
+    working_dir = argv[3];
+  } else {
+    working_dir = ".";
+  }
+
+  PgmCompiler pc(working_dir);
   pc.read_uai_file(uai_fname);
   if (gen_vtree) {
     pc.init_psdd_manager(vtree_method_idx);
@@ -58,5 +74,5 @@ int main(int argc, const char* argv[]) {
   std::cout << "Final size "
             << psdd_node_util::SerializePsddNodes(result.first).size()
             << std::endl;
-  std::cout << "Log Partition" << result.second.parameter() << std::endl;
+  std::cout << "Log Partition " << result.second.parameter() << std::endl;
 }
