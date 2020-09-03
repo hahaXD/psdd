@@ -3,7 +3,7 @@ project(psdd)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_POSITION_INDEPENDENT_CODE FALSE)
+set(CMAKE_CXX_FLAGS "-no-pie")
 
 include_directories(include)
 include_directories(/usr/local/include)
