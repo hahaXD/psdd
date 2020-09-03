@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.14)
 project(psdd)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_POSITION_INDEPENDENT_CODE FALSE)
+
 include_directories(include)
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)
